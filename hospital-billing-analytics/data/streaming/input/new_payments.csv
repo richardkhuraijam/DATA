@@ -1,0 +1,3 @@
+payment_id,visit_id,payment_date,payment_amount,payment_method
+PAY011,V011,2026-08-15,2500,Insurance
+PAY012,V012,2026-08-15,800,Cash

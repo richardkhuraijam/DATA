@@ -1,0 +1,11 @@
+visit_id,patient_id,visit_date,department,doctor_id
+V001,P001,2026-08-01,Cardiology,D001
+V002,P002,2026-08-01,Orthopedics,D002
+V003,P003,2026-08-02,Neurology,D003
+V004,P001,2026-08-05,Cardiology,D001
+V005,P004,2026-08-06,Pediatrics,D004
+V006,P005,2026-08-07,General,D005
+V007,P002,2026-08-10,Orthopedics,D002
+V008,P006,2026-08-11,Cardiology,D001
+V009,P003,2026-08-12,Neurology,D003
+V010,P007,2026-08-13,General,D005

@@ -1,0 +1,8 @@
+patient_id,insurance_provider,coverage_percent
+P001,HealthCare Plus,80
+P002,MediAssist,70
+P003,HealthCare Plus,90
+P004,Star Health,75
+P005,MediAssist,60
+P006,Star Health,80
+P007,HealthCare Plus,85
