@@ -1,0 +1,11 @@
+[0m[[0m[0mdebug[0m] [0m[0mPackaging /home/richard/Desktop/scala-spark-30-days/day3-spark-setup/target/scala-2.12/day3-spark-setup_2.12-0.1.0.jar ...[0m
+[0m[[0m[0mdebug[0m] [0m[0mInput file mappings:[0m
+[0m[[0m[0mdebug[0m] [0m[0m	FirstSparkApp.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /home/richard/Desktop/scala-spark-30-days/day3-spark-setup/target/scala-2.12/classes/FirstSparkApp.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	ParallelProcessing$.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /home/richard/Desktop/scala-spark-30-days/day3-spark-setup/target/scala-2.12/classes/ParallelProcessing$.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	ParallelProcessing.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /home/richard/Desktop/scala-spark-30-days/day3-spark-setup/target/scala-2.12/classes/ParallelProcessing.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	FirstSparkApp$.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /home/richard/Desktop/scala-spark-30-days/day3-spark-setup/target/scala-2.12/classes/FirstSparkApp$.class[0m
+[0m[[0m[0mdebug[0m] [0m[0mDone packaging.[0m
