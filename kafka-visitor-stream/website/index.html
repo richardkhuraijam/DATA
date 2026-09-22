@@ -1,0 +1,283 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Kafka Visitor Tracking Demo</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+
+            font-family: Arial, sans-serif;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            background: #f4f6f8;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+
+            background: white;
+
+            padding: 50px;
+
+            border-radius: 12px;
+
+            text-align: center;
+
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        .description {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        button {
+            padding: 12px 25px;
+
+            border: none;
+            border-radius: 6px;
+
+            background: #222;
+            color: white;
+
+            font-size: 16px;
+
+            cursor: pointer;
+
+            transition: 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            opacity: 0.85;
+        }
+
+        #status {
+            margin-top: 30px;
+
+            padding: 15px;
+
+            background: #f1f1f1;
+
+            border-radius: 6px;
+
+            font-weight: bold;
+
+            word-break: break-word;
+        }
+
+        .visitor-box {
+            margin-top: 20px;
+
+            font-size: 14px;
+
+            color: #555;
+        }
+    </style>
+
+</head>
+
+
+<body>
+
+    <div class="container">
+
+        <h1>Kafka Visitor Tracking Demo</h1>
+
+        <p class="description">
+            Click a page to generate a real-time visitor event.
+        </p>
+
+
+        <div class="buttons">
+
+            <button onclick="trackVisitor('/home')">
+                Home
+            </button>
+
+            <button onclick="trackVisitor('/products')">
+                Products
+            </button>
+
+            <button onclick="trackVisitor('/about')">
+                About
+            </button>
+
+            <button onclick="trackVisitor('/contact')">
+                Contact
+            </button>
+
+        </div>
+
+
+        <div id="status">
+            Waiting for visitor activity...
+        </div>
+
+
+        <div class="visitor-box">
+
+            Visitor ID:
+
+            <strong id="visitorId">
+                Loading...
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <script>
+
+        // --------------------------------
+        // FastAPI Configuration
+        // --------------------------------
+
+        const API_URL = "http://127.0.0.1:8000";
+
+
+        // --------------------------------
+        // Visitor ID
+        // --------------------------------
+
+        let visitorId = localStorage.getItem("visitor_id");
+
+
+        if (!visitorId) {
+
+            visitorId =
+                "VIS-" +
+                crypto.randomUUID().substring(0, 8);
+
+            localStorage.setItem(
+                "visitor_id",
+                visitorId
+            );
+        }
+
+
+        // Display visitor ID
+
+        document.getElementById("visitorId").innerText =
+            visitorId;
+
+
+        // --------------------------------
+        // Send Visitor Event
+        // --------------------------------
+
+        async function trackVisitor(page) {
+
+            const status =
+                document.getElementById("status");
+
+
+            status.innerText =
+                "Sending event...";
+
+
+            try {
+
+                const url =
+                    API_URL +
+                    "/visitor?page=" +
+                    encodeURIComponent(page) +
+                    "&action=page_view" +
+                    "&visitor_id=" +
+                    encodeURIComponent(visitorId);
+
+
+                console.log(
+                    "Sending request:",
+                    url
+                );
+
+
+                const response =
+                    await fetch(
+                        url,
+                        {
+                            method: "POST"
+                        }
+                    );
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "HTTP " +
+                        response.status
+                    );
+                }
+
+
+                const data =
+                    await response.json();
+
+
+                console.log(
+                    "Kafka event:",
+                    data
+                );
+
+
+                status.innerText =
+                    "Event sent: " +
+                    page +
+                    " | Visitor: " +
+                    data.event.visitor_id;
+
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "Error:",
+                    error
+                );
+
+
+                status.innerText =
+                    "Error: " +
+                    error.message;
+
+            }
+
+        }
+
+    </script>
+
+</body>
+
+</html>
+
+
