@@ -1,0 +1,13 @@
+EmployeeID,Name,Department,Location,Salary,Experience
+1,Alice,IT,Imphal,45000,2
+2,Bob,Finance,Guwahati,55000,4
+3,Charlie,IT,Imphal,60000,6
+4,David,HR,Delhi,50000,3
+5,Eva,Marketing,Bangalore,65000,5
+6,Frank,Finance,Guwahati,58000,7
+7,Grace,IT,Imphal,60000,4
+8,Helen,HR,Delhi,52000,6
+9,Ian,Finance,Guwahati,58000,5
+10,Jack,Marketing,Bangalore,70000,8
+11,Karen,IT,Bangalore,72000,9
+12,Liam,HR,Imphal,48000,2
