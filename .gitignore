@@ -5,3 +5,4 @@ project/target/
 .idea/
 *.class
 *.jar
+kafka-visitor-stream/visitors.db
