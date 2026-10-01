@@ -1,0 +1,5 @@
+TransactionID,EmployeeID,Department,Amount
+T006,E106,Finance,12000
+T007,E107,IT,4500
+T008,E108,HR,2500
+T009,E109,Marketing,8000
