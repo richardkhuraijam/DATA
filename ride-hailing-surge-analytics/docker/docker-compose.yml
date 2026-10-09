@@ -1,0 +1,275 @@
+name: ridehail
+
+# Profiles:
+#   ingestion — MySQL (Phase 1) and HDFS (needed later for Sqoop)
+#   streaming — Kafka x3 (KRaft, RF=3)
+#   batch     — HDFS, Hive, HBase+Thrift, Spark, Airflow
+#
+# Do not start every profile at once on a 16 GB laptop.
+
+x-kafka-common: &kafka-common
+  image: apache/kafka:latest
+  profiles: ["streaming"]
+  restart: unless-stopped
+  mem_limit: 768m
+  environment: &kafka-env
+    ALLOW_PLAINTEXT_LISTENER: "yes"
+    CLUSTER_ID: "abcdefghijklmnopqrstuv"
+    KAFKA_KRAFT_CLUSTER_ID: "abcdefghijklmnopqrstuv"
+    KAFKA_PROCESS_ROLES: broker,controller
+    KAFKA_CFG_PROCESS_ROLES: broker,controller
+    KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+    KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+    KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+    KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+    KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+    KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+    KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka1:9093,2@kafka2:9093,3@kafka3:9093
+    KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka1:9093,2@kafka2:9093,3@kafka3:9093
+    KAFKA_MIN_INSYNC_REPLICAS: 2
+    KAFKA_CFG_MIN_INSYNC_REPLICAS: 2
+    KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+    KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+    KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+    KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+    KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+    KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 2
+    KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+    KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: 3
+    KAFKA_HEAP_OPTS: "-Xmx512m -Xms256m"
+  networks: [ridehail]
+
+services:
+  mysql:
+    image: mysql:8.0
+    profiles: ["ingestion", "batch"]
+    restart: unless-stopped
+    mem_limit: 1g
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_allowed_packet=256M
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [ridehail]
+
+  kafka1:
+    <<: *kafka-common
+    hostname: kafka1
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: 1
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:9092,EXTERNAL://localhost:19092
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:9092,EXTERNAL://localhost:19092
+    ports:
+      - "19092:9094"
+
+  kafka2:
+    <<: *kafka-common
+    hostname: kafka2
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: 2
+      KAFKA_CFG_NODE_ID: 2
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:9092,EXTERNAL://localhost:19093
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:9092,EXTERNAL://localhost:19093
+    ports:
+      - "19093:9094"
+
+  kafka3:
+    <<: *kafka-common
+    hostname: kafka3
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: 3
+      KAFKA_CFG_NODE_ID: 3
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:9092,EXTERNAL://localhost:19094
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:9092,EXTERNAL://localhost:19094
+    ports:
+      - "19094:9094"
+
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    profiles: ["ingestion", "batch"]
+    hostname: namenode
+    restart: unless-stopped
+    mem_limit: 512m
+    ports:
+      - "9870:9870"
+      - "9000:9000"
+    environment:
+      CLUSTER_NAME: ridehail
+      HDFS_CONF_dfs_namenode_datanode_registration_ip___hostname___check: "false"
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+      - ./hadoop/core-site.xml:/etc/hadoop/core-site.xml:ro
+      - ./hadoop/hdfs-site.xml:/etc/hadoop/hdfs-site.xml:ro
+    networks: [ridehail]
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    profiles: ["ingestion", "batch"]
+    hostname: datanode
+    restart: unless-stopped
+    mem_limit: 1g
+    depends_on: [namenode]
+    environment:
+      SERVICE_PRECONDITION: namenode:9870
+    volumes:
+      - hadoop_datanode:/hadoop/dfs/data
+    networks: [ridehail]
+
+  hive-metastore-db:
+    image: bde2020/hive-metastore-postgresql:2.3.0
+    profiles: ["batch"]
+    mem_limit: 512m
+    volumes:
+      - hive_pg:/var/lib/postgresql/data
+    networks: [ridehail]
+
+  hive-metastore:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    profiles: ["batch"]
+    hostname: hive-metastore
+    mem_limit: 768m
+    depends_on: [hive-metastore-db, namenode]
+    environment:
+      SERVICE_PRECONDITION: "hive-metastore-db:5432 namenode:9870"
+    command: /opt/hive/bin/hive --service metastore
+    networks: [ridehail]
+
+  hiveserver2:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    profiles: ["batch"]
+    hostname: hiveserver2
+    mem_limit: 1g
+    ports:
+      - "10000:10000"
+      - "10002:10002"
+    depends_on: [hive-metastore]
+    environment:
+      SERVICE_PRECONDITION: "hive-metastore:9083"
+    networks: [ridehail]
+
+  hbase:
+    image: harisekhon/hbase:2.1
+    profiles: ["batch"]
+    hostname: hbase
+    mem_limit: 1536m
+    ports:
+      - "16010:16010"
+      - "9090:9090"
+    environment:
+      HBASE_HEAPSIZE: "512"
+    networks: [ridehail]
+
+  spark-master:
+    image: bitnami/spark:3.5.1
+    profiles: ["batch"]
+    hostname: spark-master
+    mem_limit: 768m
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    environment:
+      SPARK_MODE: master
+      SPARK_RPC_AUTHENTICATION_ENABLED: "no"
+      SPARK_RPC_ENCRYPTION_ENABLED: "no"
+      SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: "no"
+      SPARK_SSL_ENABLED: "no"
+      SPARK_MASTER_OPTS: "-Xms256m -Xmx${SPARK_MASTER_MEMORY:-512m}"
+    volumes:
+      - ./spark/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf:ro
+    networks: [ridehail]
+
+  spark-worker:
+    image: bitnami/spark:3.5.1
+    profiles: ["batch"]
+    hostname: spark-worker
+    mem_limit: 1536m
+    depends_on: [spark-master]
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_WORKER_MEMORY: ${SPARK_WORKER_MEMORY:-1g}
+      SPARK_WORKER_CORES: ${SPARK_WORKER_CORES:-1}
+      SPARK_RPC_AUTHENTICATION_ENABLED: "no"
+      SPARK_RPC_ENCRYPTION_ENABLED: "no"
+      SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: "no"
+      SPARK_SSL_ENABLED: "no"
+    volumes:
+      - ./spark/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf:ro
+    networks: [ridehail]
+
+  airflow-db:
+    image: postgres:15
+    profiles: ["batch"]
+    mem_limit: 512m
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 5s
+      retries: 10
+    networks: [ridehail]
+
+  airflow:
+    image: apache/airflow:2.9.3-python3.11
+    profiles: ["batch"]
+    hostname: airflow
+    mem_limit: 1536m
+    depends_on:
+      airflow-db:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ../airflow/dags:/opt/airflow/dags
+    command: >
+      bash -c "airflow db migrate &&
+      airflow users create --username admin --password $${_AIRFLOW_WWW_USER_PASSWORD} --firstname Admin --lastname User --role Admin --email admin@localhost || true &&
+      airflow standalone"
+    networks: [ridehail]
+
+volumes:
+  mysql_data:
+  hadoop_namenode:
+  hadoop_datanode:
+  hive_pg:
+  airflow_pg:
+
+networks:
+  ridehail:
+    name: ridehail

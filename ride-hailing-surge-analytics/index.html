@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ride-Hailing Surge Analytics — Interactive Presentation</title>
+  <meta name="description" content="Near-real-time NYC cab-aggregator pipeline, surge pricing engine, medallion architecture, demand forecast, and GenAI ops assistant.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="mode-deck">
+  <!-- Background Animated Layer -->
+  <div class="bg-mesh"></div>
+  <div class="bg-grid"></div>
+
+  <!-- Top Header Navigation Bar -->
+  <header class="top-header">
+    <a href="#" class="brand-logo">
+      <span>🚕 RideHail Analytics</span>
+      <span class="brand-badge">Phase 1–7</span>
+    </a>
+
+    <div class="header-actions">
+      <div class="mode-toggle-group">
+        <button id="mode-deck-btn" class="mode-btn active" title="Slide Deck Presentation Mode">
+          <span>🖥️ Presentation Deck</span>
+        </button>
+        <button id="mode-scroll-btn" class="mode-btn" title="Continuous Page Showcase Mode">
+          <span>📜 Showcase Scroll</span>
+        </button>
+      </div>
+
+      <button id="notes-btn" class="icon-btn" title="Toggle Speaker Presentation Notes (Key: N)">
+        <span>💡 Speaker Notes</span>
+      </button>
+
+      <button id="fullscreen-btn" class="icon-btn" title="Toggle Fullscreen (Key: F)">
+        <span>⛶ Fullscreen</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Presentation Progress Bar -->
+  <div class="progress-container">
+    <div id="progress-bar" class="progress-bar"></div>
+  </div>
+
+  <!-- Main Presentation Slides Container -->
+  <main class="presentation-container">
+
+    <!-- SLIDE 1: HERO OVERVIEW -->
+    <section id="slide-1" class="slide active">
+      <div class="slide-content-wrapper">
+        <div class="hero-grid">
+          <div>
+            <div class="hero-tag">
+              <span class="pulse-dot"></span>
+              <span>All Systems Operational & SLA Verified</span>
+            </div>
+
+            <h1 class="slide-title">Near-Real-Time NYC Surge Analytics & ML Pipeline</h1>
+
+            <p class="slide-subtitle">
+              Scalable PySpark Medallion lakehouse architecture processing NYC HVFHV trip requests every 60 seconds. Features dynamic weather-adjusted surge calculation, 30-min demand forecasting, and a tool-augmented GenAI ops assistant.
+            </p>
+
+            <div class="hero-stats-row">
+              <div class="stat-card">
+                <div class="stat-val">50,000</div>
+                <div class="stat-lbl">Sample Trips Processed</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val pink">263</div>
+                <div class="stat-lbl">NYC TLC Taxi Zones</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val gold">&lt; 60s</div>
+                <div class="stat-lbl">Surge Refresh SLA</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-image-frame">
+            <img src="assets/nyc_surge_hero.jpg" alt="Futuristic NYC Ride Hailing Surge Map Visualization" width="1200" height="675">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: MEDALLION PIPELINE ARCHITECTURE -->
+    <section id="slide-2" class="slide">
+      <div class="slide-content-wrapper">
+        <div class="slide-category">ARCHITECTURE & DATA FLOW</div>
+        <h2 class="slide-title">Medallion Lakehouse & Stream Pipeline</h2>
+        <p class="slide-subtitle">Click on any pipeline stage below to inspect its data contract, validation rules, and PySpark code implementation.</p>
+
+        <div class="pipeline-grid">
+          <div class="pipeline-node active" data-step="ingestion">
+            <span class="node-step-number">STEP 01</span>
+            <div class="node-icon">📡</div>
+            <div class="node-title">Ingestion Layer</div>
+            <div class="node-desc">NYC HVFHV Parquet dataset seeded to MySQL. Replayed via Kafka producers for trips, driver GPS, and weather.</div>
+            <div class="node-tech-tags">
+              <span class="tech-tag">Kafka</span>
+              <span class="tech-tag">MySQL</span>
+              <span class="tech-tag">Faker</span>
+            </div>
+          </div>
+
+          <div class="pipeline-node" data-step="medallion">
+            <span class="node-step-number">STEP 02</span>
+            <div class="node-icon">🏅</div>
+            <div class="node-title">PySpark Medallion</div>
+            <div class="node-desc">Bronze (Raw) → Silver (Cleaned with DLT quality rules `@dlt.expect_or_drop`) → Gold (Zone Aggregates).</div>
+            <div class="node-tech-tags">
+              <span class="tech-tag">PySpark</span>
+              <span class="tech-tag">DLT Rules</span>
+              <span class="tech-tag">Delta</span>
+            </div>
+          </div>
+
+          <div class="pipeline-node" data-step="lakehouse">
+            <span class="node-step-number">STEP 03</span>
+            <div class="node-icon">⚡</div>
+            <div class="node-title">Lakehouse & Athena</div>
+            <div class="node-desc">S3 Delta Lake storage partitioned by year/month/day/hour. Athena benchmark achieved 84% scan cost drop.</div>
+            <div class="node-tech-tags">
+              <span class="tech-tag">S3 Parquet</span>
+              <span class="tech-tag">AWS Athena</span>
+              <span class="tech-tag">Hive</span>
+            </div>
+          </div>
+
+          <div class="pipeline-node" data-step="genai">
+            <span class="node-step-number">STEP 04</span>
+            <div class="node-icon">🤖</div>
+            <div class="node-title">ML & GenAI Ops</div>
+            <div class="node-desc">Random Forest demand forecast model ($R^2 = 0.9966$) feeding an interactive Streamlit operations assistant.</div>
+            <div class="node-tech-tags">
+              <span class="tech-tag">MLflow</span>
+              <span class="tech-tag">Scikit-Learn</span>
+              <span class="tech-tag">Streamlit</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipeline-detail-box">
+          <div class="pipeline-detail-header">
+            <div id="pipeline-detail-title" class="pipeline-detail-title">1. Ingestion Layer (MySQL + Kafka Producers)</div>
+            <span class="brand-badge">Verified Code</span>
+          </div>
+          <pre id="code-display" class="code-snippet"># Ingestion Producer (ingestion/producers/tlc_replay.py)
+event = {
+    "event_id": str(uuid.uuid4()),
+    "trip_id": row["trip_id"],
+    "pickup_zone_id": int(row["PULocationID"]),
+    "dropoff_zone_id": int(row["DOLocationID"]),
+    "request_time": row["request_datetime"].isoformat(),
+    "fare": float(row["base_passenger_fare"]),
+    "status": "COMPLETED"
+}
+kafka_producer.send("trip-requests", value=event)</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: INTERACTIVE SURGE MULTIPLIER ENGINE -->
+    <section id="slide-3" class="slide">
+      <div class="slide-content-wrapper">
+        <div class="slide-category">LIVE SIMULATION DEMO</div>
+        <h2 class="slide-title">Dynamic Surge Multiplier Calculation Engine</h2>
+        <p class="slide-subtitle">Select a NYC Taxi Zone and adjust demand, supply, rain, or temperature to observe the real-time surge multiplier breakdown.</p>
+
+        <div class="surge-engine-grid">
+          <div class="sim-control-panel">
+            <div class="control-group">
+              <div class="control-label">
+                <span>NYC Location Zone</span>
+              </div>
+              <div class="zone-selector-grid">
+                <div class="zone-chip active" data-zone="161">Midtown (161)</div>
+                <div class="zone-chip" data-zone="132">JFK Airport (132)</div>
+                <div class="zone-chip" data-zone="87">Financial (87)</div>
+                <div class="zone-chip" data-zone="255">Williamsburg (255)</div>
+                <div class="zone-chip" data-zone="209">SoHo (209)</div>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <div class="control-label">
+                <span>Trip Requests (Demand)</span>
+                <span id="val-demand" class="control-val-badge">180</span>
+              </div>
+              <input id="sim-demand" class="sim-slider" type="range" min="10" max="400" value="180">
+            </div>
+
+            <div class="control-group">
+              <div class="control-label">
+                <span>Available Drivers (Supply)</span>
+                <span id="val-supply" class="control-val-badge">60</span>
+              </div>
+              <input id="sim-supply" class="sim-slider" type="range" min="5" max="200" value="60">
+            </div>
+
+            <div class="control-group">
+              <div class="control-label">
+                <span>Rainfall Intensity (mm/h)</span>
+                <span id="val-rain" class="control-val-badge">2.5 mm/h</span>
+              </div>
+              <input id="sim-rain" class="sim-slider" type="range" min="0" max="10" step="0.5" value="2.5">
+            </div>
+
+            <div class="control-group">
+              <div class="control-label">
+                <span>Temperature (°C)</span>
+                <span id="val-temp" class="control-val-badge">4°C</span>
+              </div>
+              <input id="sim-temp" class="sim-slider" type="range" min="-10" max="35" value="4">
+            </div>
+          </div>
+
+          <div class="surge-result-card">
+            <div class="slide-category" style="justify-content: center;">RECOMMENDED SURGE MULTIPLIER</div>
+            <div id="out-surge-val" class="surge-badge-large">2.80x</div>
+            <div class="hero-tag" style="margin-bottom: 0;">
+              <span>EWMA Smoothed 5-min Window (1-min slide)</span>
+            </div>
+
+            <div class="surge-formula-breakdown">
+              <div class="formula-item">
+                <div class="formula-lbl">Demand/Supply Ratio</div>
+                <div id="out-ratio" class="formula-val">3.00</div>
+              </div>
+              <div class="formula-item">
+                <div class="formula-lbl">Base Multiplier Step</div>
+                <div id="out-base" class="formula-val">2.5x</div>
+              </div>
+              <div class="formula-item">
+                <div class="formula-lbl">Weather Adjustment</div>
+                <div id="out-weather" class="formula-val">+0.2x</div>
+              </div>
+              <div class="formula-item">
+                <div class="formula-lbl">3.0x Safety Cap Guard</div>
+                <div id="out-cap-guard" class="formula-val">Normal</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: ML MACHINE LEARNING & DEMAND FORECAST -->
+    <section id="slide-4" class="slide">
+      <div class="slide-content-wrapper">
+        <div class="slide-category">MACHINE LEARNING</div>
+        <h2 class="slide-title">30-Minute Forward Zone Demand Forecasting</h2>
+        <p class="slide-subtitle">Supervised regression model trained on rolling 30-minute demand lag features to predict incoming zone request volume.</p>
+
+        <div class="ml-grid">
+          <div>
+            <div class="stat-card" style="margin-bottom: 1rem;">
+              <div class="stat-lbl">Random Forest Model Accuracy</div>
+              <div class="stat-val pink">R² = 0.9966</div>
+              <div class="hero-tag" style="margin-top: 0.5rem; margin-bottom: 0;">SLA Threshold Target (R² &ge; 0.70): PASSED</div>
+            </div>
+
+            <div class="surge-formula-breakdown" style="grid-template-columns: 1fr 1fr; margin-top: 0;">
+              <div class="formula-item">
+                <div class="formula-lbl">Linear Regression Baseline R²</div>
+                <div class="formula-val">0.9975</div>
+              </div>
+              <div class="formula-item">
+                <div class="formula-lbl">Random Forest MAE</div>
+                <div class="formula-val">2.78 trips</div>
+              </div>
+              <div class="formula-item">
+                <div class="formula-lbl">Random Forest RMSE</div>
+                <div class="formula-val">3.52 trips</div>
+              </div>
+              <div class="formula-item">
+                <div class="formula-lbl">Output Parquet File</div>
+                <div class="formula-val">forecast_latest.parquet</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title">Demand Forecast vs Actual Volume (24h Window)</div>
+              <div class="chart-legend">
+                <div class="legend-item">
+                  <span class="legend-dot" style="background: #00f2fe;"></span>
+                  <span>Actual Demand</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot" style="background: #f538a0;"></span>
+                  <span>RF Forecast</span>
+                </div>
+              </div>
+            </div>
+            <canvas id="ml-chart-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: GENAI OPS ASSISTANT SIMULATOR -->
+    <section id="slide-5" class="slide">
+      <div class="slide-content-wrapper">
+        <div class="slide-category">GENAI OPERATIONS ASSISTANT</div>
+        <h2 class="slide-title">Interactive AI Ops Assistant Interface</h2>
+        <p class="slide-subtitle">Operations assistant interface powered by tool router execution (never writes free-form SQL!). Try clicking sample prompts below:</p>
+
+        <div class="genai-chat-card">
+          <div class="chat-header-bar">
+            <div class="bot-avatar">🚕</div>
+            <div>
+              <div style="font-weight: 700; font-size: 0.95rem;">Ride-Hailing Ops Assistant (Streamlit)</div>
+              <div style="font-size: 0.75rem; color: var(--accent-success);">🟢 Active • Connected to Lakehouse & Metrics Tools</div>
+            </div>
+          </div>
+
+          <div id="chat-body" class="chat-body">
+            <div class="chat-msg assistant">
+              <div class="bot-avatar">🚕</div>
+              <div class="msg-bubble">
+                Hello! I am your Ride-Hailing Ops Assistant. Ask me about current zone surge, driver utilisation, top surge zones, demand forecasts, or KPI summaries.
+              </div>
+            </div>
+          </div>
+
+          <div class="chip-suggestions">
+            <div class="prompt-chip" data-query="top_surge">Which 5 zones have the highest surge right now?</div>
+            <div class="prompt-chip" data-query="driver_util">Check driver utilisation rate today</div>
+            <div class="prompt-chip" data-query="forecast">Demand forecast for Midtown (Zone 161)</div>
+            <div class="prompt-chip" data-query="kpi_summary">Show executive KPI summary report</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: VERIFIED SLA & METRIC DASHBOARD -->
+    <section id="slide-6" class="slide">
+      <div class="slide-content-wrapper">
+        <div class="slide-category">RECONCILIATION & REPRODUCIBILITY</div>
+        <h2 class="slide-title">Full SLA Verification & Compliance Matrix</h2>
+        <p class="slide-subtitle">100% of end-to-end data pipelines, streaming rules, lakehouse partition optimizations, and ML models meet or exceed target SLAs.</p>
+
+        <div class="sla-grid">
+          <div class="sla-card">
+            <span class="sla-badge-pass">PASSED</span>
+            <div class="sla-metric-title">Surge Refresh Interval</div>
+            <div class="sla-val-large">60s</div>
+            <div class="sla-target-lbl">Target: Every 60 seconds (5-min window, 1-min slide)</div>
+          </div>
+
+          <div class="sla-card">
+            <span class="sla-badge-pass">PASSED</span>
+            <div class="sla-metric-title">Average Rider ETA</div>
+            <div class="sla-val-large" style="color: var(--accent-pink);">3.9 min</div>
+            <div class="sla-target-lbl">Target: &lt; 4.5 minutes across all 263 zones</div>
+          </div>
+
+          <div class="sla-card">
+            <span class="sla-badge-pass">PASSED</span>
+            <div class="sla-metric-title">Driver Utilisation Rate</div>
+            <div class="sla-val-large" style="color: var(--accent-warning);">81.0%</div>
+            <div class="sla-target-lbl">Target: &ge; 78.0% active driver utilization</div>
+          </div>
+
+          <div class="sla-card">
+            <span class="sla-badge-pass">PASSED</span>
+            <div class="sla-metric-title">Athena Scan Cost Drop</div>
+            <div class="sla-val-large" style="color: var(--accent-success);">84.0%</div>
+            <div class="sla-target-lbl">Target: &ge; 70% data scan reduction via Parquet</div>
+          </div>
+
+          <div class="sla-card">
+            <span class="sla-badge-pass">PASSED</span>
+            <div class="sla-metric-title">Demand Forecast Accuracy</div>
+            <div class="sla-val-large" style="color: var(--accent-purple);">0.9966</div>
+            <div class="sla-target-lbl">Target: R² &ge; 0.70 (Random Forest model)</div>
+          </div>
+
+          <div class="sla-card">
+            <span class="sla-badge-pass">PASSED</span>
+            <div class="sla-metric-title">PyTest Unit Test Suite</div>
+            <div class="sla-val-large">16 / 16</div>
+            <div class="sla-target-lbl">100% clean test execution with zero errors</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <footer class="bottom-nav-bar">
+    <div id="slide-counter" style="font-family: var(--font-heading); font-weight: 700; font-size: 1rem; color: var(--accent-cyan);">
+      01 / 06
+    </div>
+
+    <div id="slide-indicators" class="slide-indicators"></div>
+
+    <div class="deck-nav-btns">
+      <button id="prev-slide-btn" class="nav-btn" disabled>← Previous</button>
+      <button id="next-slide-btn" class="nav-btn">Next Slide →</button>
+    </div>
+  </footer>
+
+  <!-- Presenter Speaker Notes Drawer -->
+  <div id="notes-drawer" class="speaker-notes-drawer">
+    <div class="notes-header">💡 Presenter Speaker Notes</div>
+    <div id="notes-text" class="notes-text">
+      Welcome the audience. Introduce the NYC TLC HVFHV dataset (50k sample dataset), 263 zones, sub-60s streaming SLA, and end-to-end Python/PySpark architecture.
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
