@@ -3,16 +3,37 @@ Create a DLT pipeline on this file and set pipeline configuration `landing_base`
 sub-folders  trips/ (Parquet from MySQL export),  pings/ (raw_stream/driver_gps_pings Parquet),  surge/ (bronze_surge Parquet).
 If DLT is unavailable on the Free Edition, run the same transformations as plain Delta jobs (same predicates as .filter()).
 """
-import dlt
+# In Databricks DLT runtime, `dlt` and `spark` are automatically injected globals.
+# Fallbacks below ensure local IDEs report zero linter/import errors.
+try:
+    import dlt
+except ImportError:
+    class _MockDLT:  # type: ignore
+        def table(self, *args, **kwargs): return lambda fn: fn
+        def expect_or_drop(self, *args, **kwargs): return lambda fn: fn
+        def read(self, *args, **kwargs): pass
+        def read_stream(self, *args, **kwargs): pass
+    dlt = _MockDLT()
+
+try:
+    _spark = spark  # type: ignore # noqa: F821
+except NameError:
+    from pyspark.sql import SparkSession
+    _spark = SparkSession.builder.getOrCreate()
+
 from pyspark.sql import functions as F
 
-BASE = spark.conf.get("landing_base")  # noqa: F821 - `spark` is injected by Databricks
-LAT_MIN, LAT_MAX, LON_MIN, LON_MAX = 17.10, 17.75, 78.15, 78.75        # Hyderabad bounds
+BASE = _spark.conf.get("landing_base", "/Volumes/workspace/default/landing")
+LAT_MIN, LAT_MAX, LON_MIN, LON_MAX = 17.10, 17.75, 78.15, 78.75  # Hyderabad bounds
 
 
 def _auto_loader(folder: str):
-    return (spark.readStream.format("cloudFiles").option("cloudFiles.format", "parquet")  # noqa: F821
-            .option("cloudFiles.schemaLocation", f"{BASE}/_schemas/{folder}").load(f"{BASE}/{folder}"))
+    return (
+        _spark.readStream.format("cloudFiles")
+        .option("cloudFiles.format", "parquet")
+        .option("cloudFiles.schemaLocation", f"{BASE}/_schemas/{folder}")
+        .load(f"{BASE}/{folder}")
+    )
 
 
 # ---------- Bronze: as received, no rules ----------
