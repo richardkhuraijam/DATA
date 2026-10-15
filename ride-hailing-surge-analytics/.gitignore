@@ -1,0 +1,47 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+*.log
+.run/
+logs/
+
+# Downloaded TLC / GIS (large)
+data/raw/
+*.parquet
+!data/**/*.md
+
+# Spark / Hadoop local scratch
+spark-warehouse/
+metastore_db/
+derby.log
+checkpoints/
+
+# IDE
+.idea/
+.vscode/
+
+# MLflow & SQLite
+mlflow.db
+mlruns/
+*.db
+*.sqlite
+.env
+data/raw/
+data/synthetic/
+data/warehouse/
+data/gold/
+data/lakehouse/
+data/checkpoints/
+data/analysis/
+data/_csv_baseline/
+ml/model.joblib
+metastore_db/
+derby.log
+spark-warehouse/

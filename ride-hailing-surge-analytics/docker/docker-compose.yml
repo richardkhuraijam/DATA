@@ -1,0 +1,140 @@
+name: ridehail
+# Profiles (pick what you need; a 16 GB Mac cannot run everything at once):
+#   ingestion : mysql
+#   streaming : kafka x3 (KRaft, RF=3, min.insync.replicas=2) + hbase (Thrift :9090)
+#   batch     : mysql + airflow (custom image with Java + PySpark) + its postgres
+#   hdfs      : OPTIONAL namenode + datanode (code defaults to local paths; set RAW_LANDING_BASE / WAREHOUSE_DIR to hdfs:// to use it)
+# Spark itself runs on your host (pip pyspark, local[*]) or inside the Airflow container - no Spark cluster containers.
+# Verify image pulls once with:  docker compose -f docker/docker-compose.yml --profile streaming pull
+
+x-kafka-env: &kafka-env
+  CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+  KAFKA_PROCESS_ROLES: broker,controller
+  KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+  KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+  KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka1:9093,2@kafka2:9093,3@kafka3:9093
+  KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+  KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+  KAFKA_MIN_INSYNC_REPLICAS: 2
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+  KAFKA_HEAP_OPTS: "-Xmx512m -Xms256m"
+
+x-kafka: &kafka
+  image: apache/kafka:3.8.0
+  profiles: ["streaming"]
+  restart: unless-stopped
+  mem_limit: 900m
+  networks: [ridehail]
+
+services:
+  mysql:
+    image: mysql:8.0
+    profiles: ["ingestion", "batch"]
+    restart: unless-stopped
+    mem_limit: 1g
+    ports: ["${MYSQL_PORT:-3306}:3306"]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--max_allowed_packet=256M"]
+    volumes: [mysql_data:/var/lib/mysql]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [ridehail]
+
+  kafka1:
+    <<: *kafka
+    hostname: kafka1
+    ports: ["19092:9094"]
+    environment: {<<: *kafka-env, KAFKA_NODE_ID: 1, KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka1:9092,EXTERNAL://localhost:19092"}
+  kafka2:
+    <<: *kafka
+    hostname: kafka2
+    ports: ["19093:9094"]
+    environment: {<<: *kafka-env, KAFKA_NODE_ID: 2, KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka2:9092,EXTERNAL://localhost:19093"}
+  kafka3:
+    <<: *kafka
+    hostname: kafka3
+    ports: ["19094:9094"]
+    environment: {<<: *kafka-env, KAFKA_NODE_ID: 3, KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka3:9092,EXTERNAL://localhost:19094"}
+
+  hbase:
+    image: harisekhon/hbase:2.1
+    platform: linux/amd64          # Intel-only image; runs under Rosetta on Apple Silicon
+    profiles: ["streaming"]
+    hostname: hbase
+    mem_limit: 1536m
+    ports: ["16010:16010", "9090:9090"]
+    environment: {HBASE_HEAPSIZE: "512"}
+    networks: [ridehail]
+
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    platform: linux/amd64
+    profiles: ["hdfs"]
+    hostname: namenode
+    mem_limit: 768m
+    ports: ["9870:9870", "9000:9000"]
+    environment: {CLUSTER_NAME: ridehail, CORE_CONF_fs_defaultFS: "hdfs://namenode:9000", HDFS_CONF_dfs_replication: "1"}
+    volumes: [hadoop_namenode:/hadoop/dfs/name]
+    networks: [ridehail]
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    platform: linux/amd64
+    profiles: ["hdfs"]
+    hostname: datanode
+    mem_limit: 1g
+    depends_on: [namenode]
+    environment: {CORE_CONF_fs_defaultFS: "hdfs://namenode:9000", HDFS_CONF_dfs_replication: "1"}
+    volumes: [hadoop_datanode:/hadoop/dfs/data]
+    networks: [ridehail]
+
+  airflow-db:
+    image: postgres:15
+    profiles: ["batch"]
+    mem_limit: 512m
+    environment: {POSTGRES_USER: airflow, POSTGRES_PASSWORD: airflow, POSTGRES_DB: airflow}
+    volumes: [airflow_pg:/var/lib/postgresql/data]
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U airflow"], interval: 5s, retries: 10}
+    networks: [ridehail]
+
+  airflow:
+    build: {context: .., dockerfile: docker/airflow.Dockerfile}
+    profiles: ["batch"]
+    hostname: airflow
+    mem_limit: 3g
+    depends_on: {airflow-db: {condition: service_healthy}, mysql: {condition: service_healthy}}
+    ports: ["8081:8080"]
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+      AIRFLOW__SMTP__SMTP_HOST: ${SMTP_HOST:-localhost}
+      AIRFLOW__SMTP__SMTP_PORT: ${SMTP_PORT:-1025}
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-you@example.com}
+      MYSQL_HOST: mysql          # inside the compose network
+      MYSQL_PORT: "3306"
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      S3_BUCKET: ${S3_BUCKET:-}
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      PYTHONPATH: /opt/airflow/repo
+    volumes: ["../airflow/dags:/opt/airflow/dags", "..:/opt/airflow/repo"]
+    command: standalone
+    networks: [ridehail]
+
+volumes: {mysql_data: {}, hadoop_namenode: {}, hadoop_datanode: {}, airflow_pg: {}}
+networks: {ridehail: {name: ridehail}}
