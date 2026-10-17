@@ -1,0 +1,13 @@
+procedure_id,visit_id,procedure_name,procedure_cost
+PR001,V001,ECG,1500
+PR002,V001,Echocardiogram,4500
+PR003,V002,X-Ray,2000
+PR004,V002,Physiotherapy,1200
+PR005,V003,MRI Brain,8000
+PR006,V004,Cardiac Consultation,1000
+PR007,V005,Pediatric Consultation,800
+PR008,V006,Blood Test,1200
+PR009,V007,X-Ray,2000
+PR010,V008,ECG,1500
+PR011,V009,EEG,5000
+PR012,V010,General Consultation,700

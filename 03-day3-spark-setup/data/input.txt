@@ -1,0 +1,4 @@
+Apache Spark is fast
+Scala is powerful
+Spark processes big data
+Learning Spark is fun

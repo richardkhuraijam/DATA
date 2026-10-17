@@ -1,0 +1,22 @@
+# SBT / Scala
+target/
+project/target/
+project/project/
+.bsp/
+.metals/
+.idea/
+
+# Generated data
+data/raw/
+data/streaming/input/
+reports/
+
+# Spark / HDFS
+checkpoint/
+checkpoints/
+
+# OS files
+.DS_Store
+
+# Logs
+*.log
