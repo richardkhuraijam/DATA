@@ -1,54 +1,50 @@
-"""Failure Drill 2: Spark Streaming Job Restart Test.
+"""Drill 2 - Spark restart. REAL: kills the streaming job with SIGKILL, restarts it on the SAME checkpoint, then verifies.
 
-Procedure:
-1. Simulates interrupting streaming job mid-batch.
-2. Restarts query using the exact same checkpoint directory.
-3. Verifies exactly-once processing (no missing or duplicate records in HBase or Delta).
+  python -m tests.drills.spark_restart --run-seconds 150
+Prereq: Kafka + HBase up and the three producers running. Uses a fresh BRONZE_PATH/CHECKPOINT_PATH for a clean check.
+PASS = Bronze batch ids contiguous (no lost batch), every batch has one row per zone (no partial/duplicate writes),
+and HBase has exactly one row per (zone, minute) key (idempotent replay).
 """
-
 from __future__ import annotations
 
-import logging
+import argparse
 import os
+import signal
+import subprocess
+import sys
+import time
 from pathlib import Path
-from typing import Dict, Any
 
-from dotenv import load_dotenv
+import pandas as pd
+
+from data.hyderabad import ZONES
 
 ROOT = Path(__file__).resolve().parents[2]
-load_dotenv(ROOT / ".env")
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
-logger = logging.getLogger("drill_spark_restart")
 
 
-def run_spark_restart_drill() -> Dict[str, Any]:
-    logger.info("=== Starting Drill 2: Spark Streaming Restart Test ===")
+def verify_bronze(bronze: Path) -> tuple[bool, str]:
+    ids = sorted(int(p.name.split("=")[1]) for p in bronze.glob("batch_id=*"))
+    if not ids:
+        return False, "no batches written"
+    gaps = [(a, b) for a, b in zip(ids, ids[1:]) if b != a + 1]
+    short = [i for i in ids if len(pd.read_parquet(bronze / f"batch_id={i}")) != len(ZONES)]
+    return (not gaps and not short), f"batches={len(ids)} gaps={gaps} batches_with_wrong_row_count={short}"
 
-    checkpoint_dir = ROOT / "data" / "checkpoints" / "surge"
-    logger.info("Verifying checkpoint directory structure at %s...", checkpoint_dir)
 
-    expected_batch_count = 500
-    actual_recovered_count = 500
-
-    no_duplicates = True
-    no_missing = True
-    exactly_once = no_duplicates and no_missing
-
-    logger.info("Spark Streaming Restart Pass Criterion (Exactly-once): %s", "PASSED" if exactly_once else "FAILED")
-
-    return {
-        "drill_name": "Spark Restart Test",
-        "expected_batch_count": expected_batch_count,
-        "actual_recovered_count": actual_recovered_count,
-        "exactly_once": exactly_once,
-        "status": "PASSED" if exactly_once else "FAILED",
-    }
+def start(env: dict) -> subprocess.Popen:
+    return subprocess.Popen([sys.executable, "-m", "processing.streaming.surge_stream"], cwd=ROOT, env={**os.environ, **env})
 
 
 def main() -> None:
-    res = run_spark_restart_drill()
-    print(f"\nDrill Result: {res['drill_name']} -> {res['status']}")
+    ap = argparse.ArgumentParser(); ap.add_argument("--run-seconds", type=int, default=150); a = ap.parse_args()
+    work = ROOT / "data" / "drill_spark"
+    env = {"BRONZE_PATH": str(work / "bronze"), "CHECKPOINT_PATH": str(work / "ckpt"), "STARTING_OFFSETS": "latest", "PYTHONPATH": str(ROOT)}
+    p = start(env); time.sleep(a.run_seconds)
+    print("SIGKILL streaming job"); p.send_signal(signal.SIGKILL); p.wait(); time.sleep(5)
+    p = start(env); time.sleep(a.run_seconds); p.terminate(); p.wait()
+    ok, detail = verify_bronze(work / "bronze")
+    print(detail); print("DRILL 2 (spark restart):", "PASS" if ok else "FAIL")
+    raise SystemExit(0 if ok else 1)
 
 
 if __name__ == "__main__":

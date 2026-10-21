@@ -1,72 +1,60 @@
-"""S3 Landing Sync & Glue Crawler Trigger Utility.
+"""Upload the curated warehouse to S3 (partitioned Snappy Parquet) and a raw-CSV baseline for the Athena benchmark,
+then optionally start the Glue crawler.
 
-Syncs local/HDFS curated Parquet tables to S3:
-  s3://<bucket>/curated/<table>/city=<city>/trip_date=<date>/
-And triggers AWS Glue Crawler via boto3.
+  s3://<bucket>/curated/fact_trips/city=Hyderabad/trip_date=YYYY-MM-DD/*.parquet   (+ dims)
+  s3://<bucket>/raw_csv/fact_trips_csv/fact_trips.csv                               (single unpartitioned CSV)
+Point the Glue crawler at BOTH prefixes. Credentials come from the standard AWS chain (aws configure / env vars).
 """
-
 from __future__ import annotations
 
+import argparse
 import logging
 import os
 from pathlib import Path
-from typing import Any, List
 
 import boto3
+import pandas as pd
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env")
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("s3_sync")
 
 
-def upload_directory_to_s3(local_dir: Path, bucket: str, s3_prefix: str) -> int:
-    region = os.getenv("AWS_REGION", "us-east-1")
-    s3_client = boto3.client("s3", region_name=region)
-    uploaded_count = 0
-
-    if not local_dir.exists():
-        logger.warning("Local directory %s does not exist. Skipping S3 upload.", local_dir)
-        return 0
-
-    for file_path in local_dir.rglob("*"):
-        if file_path.is_file() and not file_path.name.startswith("."):
-            rel_path = file_path.relative_to(local_dir)
-            s3_key = f"{s3_prefix.strip('/')}/{rel_path}".replace("\\", "/")
-            try:
-                s3_client.upload_file(str(file_path), bucket, s3_key)
-                uploaded_count += 1
-            except Exception as exc:
-                logger.error("Failed to upload %s to s3://%s/%s: %s", file_path, bucket, s3_key, exc)
-
-    logger.info("Uploaded %d files to s3://%s/%s", uploaded_count, bucket, s3_prefix)
-    return uploaded_count
+def upload_dir(local: Path, bucket: str, prefix: str) -> int:
+    s3, n = boto3.client("s3", region_name=os.getenv("AWS_REGION", "ap-south-1")), 0
+    for f in sorted(local.rglob("*")):
+        if f.is_file() and not f.name.startswith((".", "_")) and not f.name.endswith(".crc"):
+            s3.upload_file(str(f), bucket, f"{prefix.strip('/')}/{f.relative_to(local).as_posix()}"); n += 1
+    logger.info("uploaded %d files to s3://%s/%s", n, bucket, prefix)
+    return n
 
 
-def trigger_glue_crawler(crawler_name: str = "ridehail_curated_crawler") -> bool:
-    region = os.getenv("AWS_REGION", "us-east-1")
-    glue = boto3.client("glue", region_name=region)
+def write_csv_baseline(warehouse: Path, tmp: Path) -> Path:
+    df = pd.read_parquet(warehouse / "fact_trips")
+    df["trip_date"] = df["trip_date"].astype(str)
+    tmp.mkdir(parents=True, exist_ok=True)
+    df.drop(columns=["city"], errors="ignore").to_csv(tmp / "fact_trips.csv", index=False)
+    return tmp
 
-    try:
-        glue.start_crawler(Name=crawler_name)
-        logger.info("Triggered AWS Glue crawler '%s' successfully.", crawler_name)
-        return True
-    except Exception as exc:
-        logger.warning("Glue crawler trigger skipped/failed: %s", exc)
-        return False
+
+def start_crawler(name: str | None = None) -> None:
+    boto3.client("glue", region_name=os.getenv("AWS_REGION", "ap-south-1")).start_crawler(Name=name or os.getenv("GLUE_CRAWLER", "ridehail_curated_crawler"))
 
 
 def main() -> None:
-    bucket = os.getenv("S3_BUCKET", "")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    ap = argparse.ArgumentParser(); ap.add_argument("--warehouse", default=str(ROOT / "data" / "warehouse")); ap.add_argument("--crawler", action="store_true")
+    a = ap.parse_args()
+    bucket = os.getenv("S3_BUCKET")
     if not bucket:
-        logger.info("S3_BUCKET environment variable not set. Skipping live S3 sync (AWS Free Tier optional).")
-        return
-
-    local_curated = ROOT / "data" / "raw" / "mysql"
-    upload_directory_to_s3(local_curated, bucket, "curated")
-    trigger_glue_crawler()
+        raise SystemExit("S3_BUCKET is not set (.env). Nothing uploaded.")
+    wh = Path(a.warehouse)
+    for t in ("fact_trips", "dim_zone", "dim_driver", "dim_time"):
+        upload_dir(wh / t, bucket, f"curated/{t}")
+    upload_dir(write_csv_baseline(wh, ROOT / "data" / "_csv_baseline"), bucket, "raw_csv/fact_trips_csv")
+    if a.crawler:
+        start_crawler()
 
 
 if __name__ == "__main__":

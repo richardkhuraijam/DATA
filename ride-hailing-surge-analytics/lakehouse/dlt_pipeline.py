@@ -1,79 +1,88 @@
-"""Databricks Delta Live Tables (DLT) & Medallion Pipeline.
-
-Medallion Architecture:
-- Bronze: Raw ingested trip events and GPS pings.
-- Silver: Cleaned, deduplicated, typed with quality expectations:
-    @dlt.expect_or_drop("valid_gps", "lat BETWEEN 40.4 AND 41.0 AND lon BETWEEN -74.3 AND -73.6")
-    @dlt.expect_or_drop("positive_fare", "fare > 0")
-    @dlt.expect_or_drop("non_null_zone", "pickup_zone_id IS NOT NULL")
-- Gold: Business aggregates:
-    - zone_minute_surge
-    - zone_hourly_kpis
-    - driver_daily_utilisation
-    - revenue_per_km
-    - demand_forecast
+"""Databricks Delta Live Tables (Lakeflow Declarative Pipelines): Bronze -> Silver -> Gold.   *** NOT YET RUN ***
+Create a DLT pipeline on this file and set pipeline configuration `landing_base` = s3://<bucket>/landing with
+sub-folders  trips/ (Parquet from MySQL export),  pings/ (raw_stream/driver_gps_pings Parquet),  surge/ (bronze_surge Parquet).
+If DLT is unavailable on the Free Edition, run the same transformations as plain Delta jobs (same predicates as .filter()).
 """
-
-from __future__ import annotations
-
-import logging
-from typing import Any
+# In Databricks DLT runtime, `dlt` and `spark` are automatically injected globals.
+# Fallbacks below ensure local IDEs report zero linter/import errors.
+try:
+    import dlt
+except ImportError:
+    class _MockDLT:  # type: ignore
+        def table(self, *args, **kwargs): return lambda fn: fn
+        def expect_or_drop(self, *args, **kwargs): return lambda fn: fn
+        def read(self, *args, **kwargs): pass
+        def read_stream(self, *args, **kwargs): pass
+    dlt = _MockDLT()
 
 try:
-    import dlt  # type: ignore
-    from pyspark.sql import functions as F
+    _spark = spark  # type: ignore # noqa: F821
+except NameError:
+    from pyspark.sql import SparkSession
+    _spark = SparkSession.builder.getOrCreate()
 
-    @dlt.table(comment="Raw trip requests bronze table")
-    def bronze_trips():
-        return dlt.read_stream("raw_trip_requests")
+from pyspark.sql import functions as F
 
-    @dlt.table(comment="Cleaned and validated silver trips table")
-    @dlt.expect_or_drop("valid_gps", "lat BETWEEN 40.4 AND 41.0 AND lon BETWEEN -74.3 AND -73.6")
-    @dlt.expect_or_drop("positive_fare", "fare > 0")
-    @dlt.expect_or_drop("non_null_zone", "pickup_zone_id IS NOT NULL")
-    @dlt.expect_or_drop("pickup_after_request", "pickup_time >= request_time")
-    def silver_trips():
-        return dlt.read_stream("bronze_trips").dropDuplicates(["event_id"])
+BASE = _spark.conf.get("landing_base", "/Volumes/workspace/default/landing")
+LAT_MIN, LAT_MAX, LON_MIN, LON_MAX = 17.10, 17.75, 78.15, 78.75  # Hyderabad bounds
 
-    @dlt.table(comment="Gold zone hourly KPIs")
-    def zone_hourly_kpis():
-        return (
-            dlt.read("silver_trips")
-            .groupBy(F.window("pickup_time", "1 hour"), "pickup_zone_id")
-            .agg(
-                F.count("*").alias("total_trips"),
-                F.avg("fare").alias("avg_fare"),
-                F.sum("distance_km").alias("total_distance_km"),
-                F.avg("wait_time_min").alias("avg_eta_min"),
-            )
-        )
 
-    @dlt.table(comment="Gold driver daily utilisation")
-    def driver_daily_utilisation():
-        return (
-            dlt.read("silver_trips")
-            .groupBy(F.to_date("pickup_time").alias("trip_date"), "driver_id")
-            .agg(
-                F.count("*").alias("completed_trips"),
-                F.sum("duration_min").alias("on_trip_minutes"),
-                (F.sum("duration_min") / 480.0).alias("utilisation_rate"),
-            )
-        )
+def _auto_loader(folder: str):
+    return (
+        _spark.readStream.format("cloudFiles")
+        .option("cloudFiles.format", "parquet")
+        .option("cloudFiles.schemaLocation", f"{BASE}/_schemas/{folder}")
+        .load(f"{BASE}/{folder}")
+    )
 
-except ImportError:
-    # Local PySpark fallback implementation if DLT package is not present
-    logging.warning("DLT module not found. Running in local PySpark Medallion fallback mode.")
 
-    def run_plain_delta_fallback(spark: Any, raw_trips_path: str, silver_output_path: str) -> None:
-        df = spark.read.parquet(raw_trips_path)
+# ---------- Bronze: as received, no rules ----------
+@dlt.table(comment="Trips as exported from MySQL")
+def bronze_trips(): return _auto_loader("trips")
 
-        # Apply DLT quality rules in standard PySpark filter
-        silver_df = (
-            df.filter(F.col("fare") > 0)
-            .filter(F.col("pickup_zone_id").isNotNull())
-            .filter(F.col("pickup_time") >= F.col("request_time"))
-            .dropDuplicates(["trip_id"])
-        )
+@dlt.table(comment="Raw GPS pings from Kafka")
+def bronze_pings(): return _auto_loader("pings")
 
-        silver_df.write.mode("overwrite").parquet(silver_output_path)
-        logging.info("Saved %d valid silver trip records to %s", silver_df.count(), silver_output_path)
+@dlt.table(comment="Surge engine output")
+def bronze_surge(): return _auto_loader("surge")
+
+# ---------- Silver: cleaned, typed, deduplicated ----------
+@dlt.table(comment="Valid trips")
+@dlt.expect_or_drop("non_null_zone", "pickup_zone_id IS NOT NULL AND dropoff_zone_id IS NOT NULL")
+@dlt.expect_or_drop("fare_not_negative", "fare IS NULL OR fare >= 0")
+@dlt.expect_or_drop("pickup_after_request", "pickup_time IS NULL OR pickup_time >= request_time")
+@dlt.expect_or_drop("dropoff_after_pickup", "pickup_time IS NULL OR dropoff_time IS NULL OR dropoff_time >= pickup_time")
+def silver_trips():
+    return dlt.read_stream("bronze_trips").dropDuplicates(["trip_id"])
+
+@dlt.table(comment="Valid GPS pings inside Hyderabad")
+@dlt.expect_or_drop("valid_gps", f"lat BETWEEN {LAT_MIN} AND {LAT_MAX} AND lon BETWEEN {LON_MIN} AND {LON_MAX}")
+@dlt.expect_or_drop("non_null_zone", "zone_id IS NOT NULL")
+def silver_pings():
+    return dlt.read_stream("bronze_pings").withColumn("ts", F.to_timestamp("event_time")).dropDuplicates(["event_id"])
+
+# ---------- Gold ----------
+@dlt.table(comment="Surge per zone and minute")
+def zone_minute_surge():
+    return dlt.read("bronze_surge").select("zone_id", "window_end", "demand", "supply", "on_trip", "ratio", "surge_multiplier", "rain_mm_h", "temp_c")
+
+@dlt.table(comment="Hourly KPIs per zone")
+def zone_hourly_kpis():
+    t = dlt.read("silver_trips")
+    return (t.groupBy("pickup_zone_id", F.date_trunc("hour", "request_time").alias("hour_ts")).agg(
+        F.count("*").alias("requests"),
+        F.avg((F.unix_timestamp("pickup_time") - F.unix_timestamp("request_time")) / 60).alias("avg_eta_min"),
+        F.sum("fare").alias("revenue_inr"), F.sum("distance_km").alias("km")))
+
+@dlt.table(comment="Driver utilisation = on-trip share of GPS pings, per driver per day")
+def driver_daily_utilisation():
+    p = dlt.read("silver_pings").where("source = 'gps_simulator'")
+    return (p.groupBy("driver_id", F.to_date("ts").alias("date")).agg(
+        (F.sum((F.col("status") == "ON_TRIP").cast("int")) / F.count("*")).alias("utilisation"), F.count("*").alias("pings")))
+
+@dlt.table(comment="Revenue per km by zone and hour")
+def revenue_per_km():
+    t = dlt.read("silver_trips")
+    return (t.groupBy("pickup_zone_id", F.hour("request_time").alias("hour")).agg(
+        (F.sum("fare") / F.greatest(F.sum("distance_km"), F.lit(0.001))).alias("revenue_per_km")))
+# demand_forecast: written by ml/score.py

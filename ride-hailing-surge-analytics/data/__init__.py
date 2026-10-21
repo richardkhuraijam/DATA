@@ -1,1 +1,1 @@
-"""Data seeding and TLC download helpers."""
+"""Hyderabad city model and data seeding."""

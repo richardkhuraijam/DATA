@@ -1,56 +1,20 @@
-"""Master Batch Airflow DAG.
-
-Schedule: Daily at 00:30 UTC
-Tasks:
-1. Sqoop / Spark JDBC import from MySQL
-2. Spark Core cleansing and pair-RDD analysis
-3. Sync Parquet partitions to S3 curated storage
-"""
-
-from __future__ import annotations
-
+"""master_batch_dag - daily 00:30. Runs the repo's code (mounted at /opt/airflow/repo) so DAG parsing needs no Spark imports."""
 from datetime import datetime, timedelta
 
 from airflow import DAG
-# pyrefly: ignore [missing-import]
 from airflow.operators.bash import BashOperator
-# pyrefly: ignore [missing-import]
-from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
-from ingestion.sqoop.spark_jdbc_import import main as run_jdbc_import
-from processing.batch.spark_core_trips import main as run_batch_analysis
+RUN = "cd /opt/airflow/repo && PYTHONPATH=/opt/airflow/repo "
+default_args = {"owner": "data_engineering", "depends_on_past": False, "email_on_failure": True, "retries": 2,
+                "retry_delay": timedelta(minutes=5)}
 
-default_args = {
-    "owner": "data_engineering",
-    "depends_on_past": False,
-    "start_date": datetime(2026, 1, 1),
-    "email_on_failure": True,
-    "email_on_retry": False,
-    "retries": 2,
-    "retry_delay": timedelta(minutes=5),
-}
-
-with DAG(
-    dag_id="master_batch_dag",
-    default_args=default_args,
-    description="Daily master batch ingestion and cleansing pipeline",
-    schedule_interval="30 0 * * *",
-    catchup=False,
-) as dag:
-
-    ingest_mysql = PythonOperator(
-        task_id="ingest_mysql_tables",
-        python_callable=run_jdbc_import,
-    )
-
-    spark_batch_cleansing = PythonOperator(
-        task_id="spark_core_batch_cleansing",
-        python_callable=run_batch_analysis,
-    )
-
-    sync_s3_curated = BashOperator(
-        task_id="sync_s3_curated",
-        bash_command="python3 -m lakehouse.s3_sync",
-    )
-
-    ingest_mysql >> spark_batch_cleansing >> sync_s3_curated
+with DAG("master_batch_dag", default_args=default_args, start_date=datetime(2026, 10, 1), schedule="30 0 * * *", catchup=False,
+         tags=["ridehail"]) as dag:
+    ingest = BashOperator(task_id="mysql_to_raw_parquet", bash_command=RUN + "python -m ingestion.sqoop.spark_jdbc_import")
+    clean = BashOperator(task_id="spark_core_cleansing", bash_command=RUN + "python -m processing.batch.spark_core_trips")
+    star = BashOperator(task_id="build_hive_star_schema", bash_command=RUN + "python -m storage.build_star_schema")
+    s3 = BashOperator(task_id="sync_s3_and_glue", bash_command=RUN + "python -m lakehouse.s3_sync --crawler")
+    hourly = TriggerDagRunOperator(task_id="trigger_hourly_zone_agg", trigger_dag_id="hourly_zone_aggregation")
+    payout = TriggerDagRunOperator(task_id="trigger_driver_payout", trigger_dag_id="daily_driver_incentive_payout")
+    ingest >> clean >> star >> s3 >> [hourly, payout]

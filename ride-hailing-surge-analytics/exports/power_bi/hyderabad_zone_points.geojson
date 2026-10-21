@@ -1,0 +1,766 @@
+{
+  "type": "FeatureCollection",
+  "name": "Hyderabad_Zone_Centroids",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 1,
+      "properties": {
+        "zone_id": 1,
+        "zone_name": "Hitech City",
+        "name": "Hitech City",
+        "kind": "it_hub",
+        "demand_weight": 1.6,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.3772,
+          17.4435
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2,
+      "properties": {
+        "zone_id": 2,
+        "zone_name": "Madhapur",
+        "name": "Madhapur",
+        "kind": "it_hub",
+        "demand_weight": 1.6,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.3908,
+          17.4485
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3,
+      "properties": {
+        "zone_id": 3,
+        "zone_name": "Gachibowli",
+        "name": "Gachibowli",
+        "kind": "it_hub",
+        "demand_weight": 1.5,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.3489,
+          17.4401
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4,
+      "properties": {
+        "zone_id": 4,
+        "zone_name": "Financial District",
+        "name": "Financial District",
+        "kind": "it_hub",
+        "demand_weight": 1.3,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.3434,
+          17.4172
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 5,
+      "properties": {
+        "zone_id": 5,
+        "zone_name": "Kondapur",
+        "name": "Kondapur",
+        "kind": "it_hub",
+        "demand_weight": 1.2,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.365,
+          17.46
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 6,
+      "properties": {
+        "zone_id": 6,
+        "zone_name": "Raidurg",
+        "name": "Raidurg",
+        "kind": "it_hub",
+        "demand_weight": 0.8,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.383,
+          17.426
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 7,
+      "properties": {
+        "zone_id": 7,
+        "zone_name": "Kokapet",
+        "name": "Kokapet",
+        "kind": "residential",
+        "demand_weight": 0.7,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.33,
+          17.4
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 8,
+      "properties": {
+        "zone_id": 8,
+        "zone_name": "Narsingi",
+        "name": "Narsingi",
+        "kind": "residential",
+        "demand_weight": 0.6,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.355,
+          17.387
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 9,
+      "properties": {
+        "zone_id": 9,
+        "zone_name": "Manikonda",
+        "name": "Manikonda",
+        "kind": "residential",
+        "demand_weight": 0.9,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.387,
+          17.401
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 10,
+      "properties": {
+        "zone_id": 10,
+        "zone_name": "Miyapur",
+        "name": "Miyapur",
+        "kind": "residential",
+        "demand_weight": 1.1,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.3548,
+          17.4969
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 11,
+      "properties": {
+        "zone_id": 11,
+        "zone_name": "Kukatpally",
+        "name": "Kukatpally",
+        "kind": "residential",
+        "demand_weight": 1.4,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.4138,
+          17.4849
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 12,
+      "properties": {
+        "zone_id": 12,
+        "zone_name": "Nizampet",
+        "name": "Nizampet",
+        "kind": "residential",
+        "demand_weight": 0.8,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.383,
+          17.517
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 13,
+      "properties": {
+        "zone_id": 13,
+        "zone_name": "Bachupally",
+        "name": "Bachupally",
+        "kind": "residential",
+        "demand_weight": 0.7,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.358,
+          17.544
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 14,
+      "properties": {
+        "zone_id": 14,
+        "zone_name": "Banjara Hills",
+        "name": "Banjara Hills",
+        "kind": "commercial",
+        "demand_weight": 1.3,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.4347,
+          17.4156
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 15,
+      "properties": {
+        "zone_id": 15,
+        "zone_name": "Jubilee Hills",
+        "name": "Jubilee Hills",
+        "kind": "commercial",
+        "demand_weight": 1.2,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.4071,
+          17.4326
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 16,
+      "properties": {
+        "zone_id": 16,
+        "zone_name": "Yousufguda",
+        "name": "Yousufguda",
+        "kind": "residential",
+        "demand_weight": 0.8,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.425,
+          17.435
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 17,
+      "properties": {
+        "zone_id": 17,
+        "zone_name": "Ameerpet",
+        "name": "Ameerpet",
+        "kind": "transit",
+        "demand_weight": 1.4,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.4483,
+          17.4375
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 18,
+      "properties": {
+        "zone_id": 18,
+        "zone_name": "SR Nagar",
+        "name": "SR Nagar",
+        "kind": "residential",
+        "demand_weight": 0.8,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.441,
+          17.444
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 19,
+      "properties": {
+        "zone_id": 19,
+        "zone_name": "Somajiguda",
+        "name": "Somajiguda",
+        "kind": "commercial",
+        "demand_weight": 0.9,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.458,
+          17.425
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 20,
+      "properties": {
+        "zone_id": 20,
+        "zone_name": "Begumpet",
+        "name": "Begumpet",
+        "kind": "transit",
+        "demand_weight": 1.1,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.467,
+          17.444
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 21,
+      "properties": {
+        "zone_id": 21,
+        "zone_name": "Secunderabad",
+        "name": "Secunderabad",
+        "kind": "transit",
+        "demand_weight": 1.5,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.4983,
+          17.4399
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 22,
+      "properties": {
+        "zone_id": 22,
+        "zone_name": "Tarnaka",
+        "name": "Tarnaka",
+        "kind": "residential",
+        "demand_weight": 0.8,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.532,
+          17.427
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 23,
+      "properties": {
+        "zone_id": 23,
+        "zone_name": "Habsiguda",
+        "name": "Habsiguda",
+        "kind": "residential",
+        "demand_weight": 0.7,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.54,
+          17.415
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 24,
+      "properties": {
+        "zone_id": 24,
+        "zone_name": "Uppal",
+        "name": "Uppal",
+        "kind": "residential",
+        "demand_weight": 1.0,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.5591,
+          17.4058
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 25,
+      "properties": {
+        "zone_id": 25,
+        "zone_name": "Malkajgiri",
+        "name": "Malkajgiri",
+        "kind": "residential",
+        "demand_weight": 0.7,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.527,
+          17.45
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 26,
+      "properties": {
+        "zone_id": 26,
+        "zone_name": "Alwal",
+        "name": "Alwal",
+        "kind": "residential",
+        "demand_weight": 0.6,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.508,
+          17.506
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 27,
+      "properties": {
+        "zone_id": 27,
+        "zone_name": "Kompally",
+        "name": "Kompally",
+        "kind": "residential",
+        "demand_weight": 0.6,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.486,
+          17.54
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 28,
+      "properties": {
+        "zone_id": 28,
+        "zone_name": "Sainikpuri",
+        "name": "Sainikpuri",
+        "kind": "residential",
+        "demand_weight": 0.5,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.56,
+          17.49
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 29,
+      "properties": {
+        "zone_id": 29,
+        "zone_name": "Khairatabad",
+        "name": "Khairatabad",
+        "kind": "commercial",
+        "demand_weight": 0.8,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.465,
+          17.41
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 30,
+      "properties": {
+        "zone_id": 30,
+        "zone_name": "Abids",
+        "name": "Abids",
+        "kind": "commercial",
+        "demand_weight": 1.0,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.475,
+          17.391
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 31,
+      "properties": {
+        "zone_id": 31,
+        "zone_name": "Nampally",
+        "name": "Nampally",
+        "kind": "transit",
+        "demand_weight": 0.8,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.4685,
+          17.3922
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 32,
+      "properties": {
+        "zone_id": 32,
+        "zone_name": "Koti",
+        "name": "Koti",
+        "kind": "commercial",
+        "demand_weight": 0.9,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.48,
+          17.385
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 33,
+      "properties": {
+        "zone_id": 33,
+        "zone_name": "Charminar",
+        "name": "Charminar",
+        "kind": "commercial",
+        "demand_weight": 0.9,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.4747,
+          17.3616
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 34,
+      "properties": {
+        "zone_id": 34,
+        "zone_name": "Dilsukhnagar",
+        "name": "Dilsukhnagar",
+        "kind": "residential",
+        "demand_weight": 1.0,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.5247,
+          17.3688
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 35,
+      "properties": {
+        "zone_id": 35,
+        "zone_name": "LB Nagar",
+        "name": "LB Nagar",
+        "kind": "residential",
+        "demand_weight": 0.9,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.5522,
+          17.3457
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 36,
+      "properties": {
+        "zone_id": 36,
+        "zone_name": "Mehdipatnam",
+        "name": "Mehdipatnam",
+        "kind": "transit",
+        "demand_weight": 1.1,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.44,
+          17.395
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 37,
+      "properties": {
+        "zone_id": 37,
+        "zone_name": "Tolichowki",
+        "name": "Tolichowki",
+        "kind": "residential",
+        "demand_weight": 0.8,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.4116,
+          17.4024
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 38,
+      "properties": {
+        "zone_id": 38,
+        "zone_name": "Attapur",
+        "name": "Attapur",
+        "kind": "residential",
+        "demand_weight": 0.6,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.427,
+          17.366
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 39,
+      "properties": {
+        "zone_id": 39,
+        "zone_name": "Rajendranagar",
+        "name": "Rajendranagar",
+        "kind": "residential",
+        "demand_weight": 0.5,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.4,
+          17.32
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 40,
+      "properties": {
+        "zone_id": 40,
+        "zone_name": "RGIA Airport (Shamshabad)",
+        "name": "RGIA Airport (Shamshabad)",
+        "kind": "airport",
+        "demand_weight": 1.2,
+        "city": "Hyderabad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.4294,
+          17.2403
+        ]
+      }
+    }
+  ]
+}

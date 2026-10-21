@@ -1,96 +1,45 @@
-"""Feature Engineering for 30-Minute Zone Demand Forecasting Model.
+"""Feature engineering for the 30-minute zone demand forecast, built from REAL trip history (no random target).
 
-Target: trip_requests_next_30m (number of trip requests in a zone in the next 30 minutes).
-
-Features:
-- zone_id, hour, day_of_week, is_weekend, is_holiday
-- Demand Lags: lag_30m, lag_60m, lag_24h, lag_7d
-- Rolling Means: rolling_mean_1h, rolling_mean_2h
-- Weather: rain_mm_h, temperature_c
+Row = (zone, 30-min bin t). Target y_next = requests in the NEXT bin. Every feature at t only uses information
+available at t (no leakage): current/lagged demand, same-time-yesterday / last-week demand for the TARGET bin, rolling
+means, hour/day, weekend/holiday, and hourly weather (rain, temperature) joined from the weather table.
 """
-
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Optional
 
-import numpy as np
 import pandas as pd
 
-
-def generate_synthetic_feature_dataset(num_records: int = 5000) -> pd.DataFrame:
-    np.random.seed(42)
-
-    zone_ids = np.random.randint(1, 264, size=num_records)
-    hours = np.random.randint(0, 24, size=num_records)
-    day_of_week = np.random.randint(0, 7, size=num_records)
-    is_weekend = (day_of_week >= 5).astype(int)
-
-    # Base demand pattern by hour (morning/evening peak)
-    hour_factor = np.sin((hours - 6) / 24 * 2 * np.pi) + 1.5
-    base_demand = (zone_ids % 10 + 1) * 10 * hour_factor
-
-    # Lag features
-    lag_30m = np.maximum(0, base_demand + np.random.normal(0, 5, size=num_records))
-    lag_60m = np.maximum(0, base_demand + np.random.normal(0, 8, size=num_records))
-    lag_24h = np.maximum(0, base_demand + np.random.normal(0, 10, size=num_records))
-    lag_7d = np.maximum(0, base_demand + np.random.normal(0, 12, size=num_records))
-
-    rolling_mean_1h = (lag_30m + lag_60m) / 2.0
-    rolling_mean_2h = (lag_30m + lag_60m + lag_24h) / 3.0
-
-    rain_mm_h = np.random.choice([0.0, 0.5, 2.8, 5.0], size=num_records, p=[0.7, 0.15, 0.1, 0.05])
-    temperature_c = np.random.normal(18, 8, size=num_records)
-
-    # Target: 30-min forward demand
-    target = (
-        0.4 * lag_30m
-        + 0.3 * lag_60m
-        + 0.2 * lag_24h
-        + 0.1 * lag_7d
-        + 5.0 * rain_mm_h
-        + np.random.normal(0, 3, size=num_records)
-    )
-    target = np.maximum(0, target)
-
-    df = pd.DataFrame(
-        {
-            "zone_id": zone_ids,
-            "hour": hours,
-            "day_of_week": day_of_week,
-            "is_weekend": is_weekend,
-            "is_holiday": 0,
-            "lag_30m": lag_30m,
-            "lag_60m": lag_60m,
-            "lag_24h": lag_24h,
-            "lag_7d": lag_7d,
-            "rolling_mean_1h": rolling_mean_1h,
-            "rolling_mean_2h": rolling_mean_2h,
-            "rain_mm_h": rain_mm_h,
-            "temperature_c": temperature_c,
-            "target_demand_next_30m": target,
-        }
-    )
-    return df
+BIN = "30min"
+FEATURES = ["zone_id", "hour", "dow", "is_weekend", "is_holiday", "demand", "lag_30m", "lag_60m", "lag_24h", "lag_7d",
+            "roll_mean_1h", "roll_mean_2h", "rain_mm_h", "temperature_c"]
 
 
-def prepare_features_and_target(
-    df: pd.DataFrame,
-) -> Tuple[pd.DataFrame, pd.Series]:
-    feature_cols = [
-        "zone_id",
-        "hour",
-        "day_of_week",
-        "is_weekend",
-        "is_holiday",
-        "lag_30m",
-        "lag_60m",
-        "lag_24h",
-        "lag_7d",
-        "rolling_mean_1h",
-        "rolling_mean_2h",
-        "rain_mm_h",
-        "temperature_c",
-    ]
-    X = df[feature_cols]
-    y = df["target_demand_next_30m"]
-    return X, y
+def build_features(trips: pd.DataFrame, weather: Optional[pd.DataFrame] = None, holidays: Optional[set] = None) -> pd.DataFrame:
+    t = trips.dropna(subset=["pickup_zone_id", "request_time"]).copy()
+    t["bin"] = pd.to_datetime(t["request_time"]).dt.floor(BIN)
+    counts = t.groupby(["pickup_zone_id", "bin"]).size().rename("demand").reset_index()
+    full = pd.date_range(counts["bin"].min(), counts["bin"].max(), freq=BIN)
+    frames = []
+    for zone, g in counts.groupby("pickup_zone_id"):
+        s = g.set_index("bin")["demand"].reindex(full, fill_value=0).astype(float)
+        f = pd.DataFrame({"zone_id": int(zone), "bin": full, "demand": s.values})
+        f["y_next"] = f["demand"].shift(-1)
+        f["lag_30m"], f["lag_60m"] = f["demand"].shift(1), f["demand"].shift(2)
+        f["lag_24h"] = f["demand"].shift(47)           # demand in the target bin, one day earlier
+        f["lag_7d"] = f["demand"].shift(335)           # ... one week earlier
+        f["roll_mean_1h"], f["roll_mean_2h"] = f["demand"].rolling(2).mean(), f["demand"].rolling(4).mean()
+        frames.append(f)
+    X = pd.concat(frames, ignore_index=True)
+    X["hour"], X["dow"] = X["bin"].dt.hour, X["bin"].dt.dayofweek
+    X["is_weekend"] = (X["dow"] >= 5).astype(int)
+    X["is_holiday"] = X["bin"].dt.date.isin(holidays or set()).astype(int)
+    if weather is not None and len(weather):
+        w = weather.rename(columns={"hour_ts": "hour_key", "rain_mm": "rain_mm_h", "temp_c": "temperature_c"})
+        X["hour_key"] = X["bin"].dt.floor("h")
+        X = X.merge(w[["hour_key", "rain_mm_h", "temperature_c"]], on="hour_key", how="left").drop(columns="hour_key")
+        X["rain_mm_h"] = X["rain_mm_h"].fillna(0.0)
+        X["temperature_c"] = X["temperature_c"].fillna(X["temperature_c"].median())
+    else:
+        X["rain_mm_h"], X["temperature_c"] = 0.0, 28.0
+    return X

@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hyderabad Surge Analytics — Live Operations Dashboard</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(18, 24, 39, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent-cyan: #06b6d4;
+      --accent-blue: #3b82f6;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --orange: #f97316;
+      --red: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: radial-gradient(circle at 10% 20%, #0f172a 0%, #020617 90%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding: 18px 24px;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+    }
+    .title-group h1 {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--green);
+      animation: pulse 2s infinite;
+      display: inline-block;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.6; transform: scale(0.95); }
+      50% { opacity: 1; transform: scale(1.15); }
+      100% { opacity: 0.6; transform: scale(0.95); }
+    }
+    .sub-text { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .btn-group { display: flex; gap: 12px; align-items: center; }
+    .btn {
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .btn-primary { background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%); color: #fff; }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-danger { background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: #fff; }
+    .btn-danger:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-sm { padding: 4px 10px; font-size: 11px; border-radius: 6px; }
+
+    /* Process Bar */
+    .proc-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .proc-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .proc-header { display: flex; justify-content: space-between; align-items: center; }
+    .proc-title { font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+    }
+    .badge-running { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .badge-stopped { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .proc-meta { font-size: 12px; color: var(--text-muted); }
+
+    /* Layout Grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #map { height: 420px; width: 100%; border-radius: 12px; border: 1px solid var(--card-border); }
+
+    /* Table */
+    .table-container { overflow-y: auto; max-height: 420px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    th {
+      position: sticky;
+      top: 0;
+      background: #111827;
+      padding: 10px 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--card-border);
+    }
+    td { padding: 9px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+    .surge-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .surge-low { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .surge-med { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .surge-high { background: rgba(249, 115, 22, 0.2); color: #fb923c; }
+    .surge-max { background: rgba(239, 68, 68, 0.25); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+
+    /* Bottom Row: Batch Stats & Logs */
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 24px;
+    }
+    .stats-card { display: flex; flex-direction: column; gap: 12px; font-size: 13px; }
+    .stat-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+    .stat-label { color: var(--text-muted); }
+    .stat-val { font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+
+    /* Log Viewer */
+    .log-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .tab-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .tab-btn.active { background: var(--accent-blue); color: #fff; }
+    .log-box {
+      background: #030712;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #94a3b8;
+      height: 250px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+    .empty-banner {
+      padding: 30px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <div class="header">
+    <div class="title-group">
+      <h1><span class="pulse-dot"></span> Hyderabad Surge Analytics</h1>
+      <div class="sub-text">Kafka x3 &bull; Spark Structured Streaming &bull; HBase &bull; ML Demand Forecast (Localhost: 127.0.0.1)</div>
+    </div>
+    <div class="btn-group">
+      <span id="docker-pill" class="badge badge-running">Docker: Checking...</span>
+      <button class="btn btn-primary" onclick="triggerAll('start')">&#9654; Start All (make demo)</button>
+      <button class="btn btn-danger" onclick="triggerAll('stop')">&#9632; Stop All (make demo-stop)</button>
+    </div>
+  </div>
+
+  <!-- Process Health Cards -->
+  <div class="proc-bar">
+    <div class="proc-card" id="card-weather">
+      <div class="proc-header">
+        <span class="proc-title">Weather Poller</span>
+        <span class="badge badge-stopped" id="badge-weather">STOPPED</span>
+      </div>
+      <div class="proc-meta" id="meta-weather">Open-Meteo &rarr; Kafka `weather`</div>
+      <div style="margin-top:auto; display:flex; gap:8px;">
+        <button class="btn btn-primary btn-sm" onclick="triggerProc('weather', 'start')">Start</button>
+        <button class="btn btn-danger btn-sm" onclick="triggerProc('weather', 'stop')">Stop</button>
+      </div>
+    </div>
+
+    <div class="proc-card" id="card-demand">
+      <div class="proc-header">
+        <span class="proc-title">Demand Generator</span>
+        <span class="badge badge-stopped" id="badge-demand">STOPPED</span>
+      </div>
+      <div class="proc-meta" id="meta-demand">Hour 19, Hitech City Hotspot (+4x)</div>
+      <div style="margin-top:auto; display:flex; gap:8px;">
+        <button class="btn btn-primary btn-sm" onclick="triggerProc('demand', 'start')">Start</button>
+        <button class="btn btn-danger btn-sm" onclick="triggerProc('demand', 'stop')">Stop</button>
+      </div>
+    </div>
+
+    <div class="proc-card" id="card-gps">
+      <div class="proc-header">
+        <span class="proc-title">Fleet GPS (Supply)</span>
+        <span class="badge badge-stopped" id="badge-gps">STOPPED</span>
+      </div>
+      <div class="proc-meta" id="meta-gps">200 Simulated Drivers, Hour 19</div>
+      <div style="margin-top:auto; display:flex; gap:8px;">
+        <button class="btn btn-primary btn-sm" onclick="triggerProc('gps', 'start')">Start</button>
+        <button class="btn btn-danger btn-sm" onclick="triggerProc('gps', 'stop')">Stop</button>
+      </div>
+    </div>
+
+    <div class="proc-card" id="card-engine">
+      <div class="proc-header">
+        <span class="proc-title">Spark Surge Engine</span>
+        <span class="badge badge-stopped" id="badge-engine">STOPPED</span>
+      </div>
+      <div class="proc-meta" id="meta-engine">Structured Streaming (5m win / 60s trigger)</div>
+      <div style="margin-top:auto; display:flex; gap:8px;">
+        <button class="btn btn-primary btn-sm" onclick="triggerProc('engine', 'start')">Start</button>
+        <button class="btn btn-danger btn-sm" onclick="triggerProc('engine', 'stop')">Stop</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Center Row: Map + Surge Table -->
+  <div class="main-grid">
+    <!-- Hyderabad Map -->
+    <div class="card">
+      <div class="card-title">
+        <span>Hyderabad 40-Zone Surge Heatmap</span>
+        <span style="font-size:12px; color:var(--text-muted);">Circle color = Surge Multiplier</span>
+      </div>
+      <div id="map"></div>
+    </div>
+
+    <!-- Live Surge Table -->
+    <div class="card">
+      <div class="card-title">
+        <span>Live Top Surge Zones (HBase)</span>
+        <span id="refresh-badge" style="font-size:11px; color:var(--accent-cyan);">Auto-refreshing (5s)</span>
+      </div>
+      <div class="table-container">
+        <table id="surge-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Zone Name</th>
+              <th>Surge</th>
+              <th>Demand</th>
+              <th>Supply</th>
+              <th>D/S Ratio</th>
+            </tr>
+          </thead>
+          <tbody id="surge-tbody">
+            <tr><td colspan="6" class="empty-banner">Connecting to HBase...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Row: Batch Stats + Log Viewer -->
+  <div class="bottom-grid">
+    <!-- Batch & Forecast Results -->
+    <div class="card stats-card">
+      <div class="card-title" style="margin-bottom:8px;">
+        <span>Batch Analytics & ML Forecast</span>
+        <span id="sla-badge" class="badge badge-running">SLA: PASSED</span>
+      </div>
+
+      <div class="stat-row">
+        <span class="stat-label">Model SLA (R² &ge; 0.70)</span>
+        <span class="stat-val" id="val-sla" style="color:var(--green)">PASSED</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Best Model (30m Demand)</span>
+        <span class="stat-val" id="val-model">Random Forest</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Random Forest R² / MAE</span>
+        <span class="stat-val" id="val-rf">R²: 0.7595 | MAE: 2.20</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Linear Regression R² / MAE</span>
+        <span class="stat-val" id="val-lr">R²: 0.7483 | MAE: 2.27</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Total Seeded Trips</span>
+        <span class="stat-val" id="val-total">400,613</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Clean Valid / Injected Invalid</span>
+        <span class="stat-val" id="val-quality">396,633 / 3,980 (0.99%)</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Star Schema Fact Trips</span>
+        <span class="stat-val" id="val-fact">396,633 rows</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Dimensions (Drivers/Zones/Time)</span>
+        <span class="stat-val" id="val-dims">2,000 / 40 / 42,931</span>
+      </div>
+    </div>
+
+    <!-- Live Logs -->
+    <div class="card">
+      <div class="card-title">
+        <div class="log-tabs">
+          <button class="tab-btn active" onclick="switchTab('engine')">engine.log</button>
+          <button class="tab-btn" onclick="switchTab('demand')">demand.log</button>
+          <button class="tab-btn" onclick="switchTab('gps')">gps.log</button>
+          <button class="tab-btn" onclick="switchTab('weather')">weather.log</button>
+        </div>
+        <div style="font-size:12px; display:flex; align-items:center; gap:8px;">
+          <label><input type="checkbox" id="autoscroll" checked> Auto-scroll</label>
+        </div>
+      </div>
+      <div class="log-box" id="log-content">Loading log lines...</div>
+    </div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    // Initialize Hyderabad Map
+    const map = L.map('map').setView([17.4065, 78.4772], 11);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 18,
+      attribution: '&copy; CartoDB &copy; OpenStreetMap'
+    }).addTo(map);
+
+    let zoneMarkers = {};
+    let activeLogTab = 'engine';
+
+    function getSurgeColor(s) {
+      if (s >= 2.2) return '#ef4444'; // Red
+      if (s >= 1.7) return '#f97316'; // Orange
+      if (s >= 1.3) return '#f59e0b'; // Amber
+      return '#10b981'; // Green
+    }
+
+    function getPillClass(s) {
+      if (s >= 2.2) return 'surge-max';
+      if (s >= 1.7) return 'surge-high';
+      if (s >= 1.3) return 'surge-med';
+      return 'surge-low';
+    }
+
+    // Poll Status
+    async function updateStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        
+        // Update Docker Pill
+        const dp = document.getElementById('docker-pill');
+        if (data.docker && data.docker.all_up) {
+          dp.className = 'badge badge-running';
+          dp.innerText = 'Docker Stack: ALL UP';
+        } else {
+          dp.className = 'badge badge-stopped';
+          dp.innerText = 'Docker Stack: DEGRADED';
+        }
+
+        // Update processes
+        for (const [name, p] of Object.entries(data.processes || {})) {
+          const badge = document.getElementById(`badge-${name}`);
+          if (badge) {
+            badge.className = p.running ? 'badge badge-running' : 'badge badge-stopped';
+            badge.innerText = p.running ? `RUNNING (PID ${p.pid})` : 'STOPPED';
+          }
+        }
+      } catch (err) {
+        console.error("Status fetch error", err);
+      }
+    }
+
+    // Poll Surge Data
+    async function updateSurge() {
+      try {
+        const res = await fetch('/api/surge');
+        const data = await res.json();
+        const tbody = document.getElementById('surge-tbody');
+
+        if (!data.has_data) {
+          tbody.innerHTML = `<tr><td colspan="6" class="empty-banner">
+            ⏳ Engine starting up or waiting for the next 60s micro-batch.<br>
+            <span style="font-size:12px; color:var(--text-muted)">The Spark streaming engine outputs one aggregated window per minute.</span>
+          </td></tr>`;
+        } else {
+          let html = '';
+          data.zones.forEach((z, i) => {
+            const mult = z.surge_multiplier.toFixed(2);
+            const pillCls = getPillClass(z.surge_multiplier);
+            html += `<tr>
+              <td style="color:var(--text-muted)">${i + 1}</td>
+              <td style="font-weight:600">${z.name} <span style="font-size:10px; color:var(--text-muted)">(${z.kind})</span></td>
+              <td><span class="surge-pill ${pillCls}">${mult}x</span></td>
+              <td>${z.demand}</td>
+              <td>${z.supply}</td>
+              <td style="font-family:'JetBrains Mono'">${z.ratio.toFixed(2)}</td>
+            </tr>`;
+          });
+          tbody.innerHTML = html;
+        }
+
+        // Update / Add markers on map
+        data.zones.forEach(z => {
+          const color = getSurgeColor(z.surge_multiplier);
+          const radius = Math.max(7, Math.min(18, 7 + (z.surge_multiplier - 1.0) * 8));
+
+          if (zoneMarkers[z.zone_id]) {
+            zoneMarkers[z.zone_id].setStyle({ fillColor: color, color: color, radius: radius });
+            zoneMarkers[z.zone_id].setPopupContent(`
+              <b>${z.name}</b> (${z.kind})<br>
+              Surge: <b style="color:${color}">${z.surge_multiplier.toFixed(2)}x</b><br>
+              Demand: ${z.demand} | Supply: ${z.supply} (Ratio: ${z.ratio.toFixed(2)})<br>
+              <span style="font-size:10px; color:#999">${z.updated_at || 'No recent ping'}</span>
+            `);
+          } else {
+            const circle = L.circleMarker([z.lat, z.lon], {
+              radius: radius,
+              fillColor: color,
+              color: color,
+              weight: 1.5,
+              opacity: 0.9,
+              fillOpacity: 0.75
+            }).addTo(map);
+
+            circle.bindPopup(`
+              <b>${z.name}</b> (${z.kind})<br>
+              Surge: <b style="color:${color}">${z.surge_multiplier.toFixed(2)}x</b><br>
+              Demand: ${z.demand} | Supply: ${z.supply} (Ratio: ${z.ratio.toFixed(2)})<br>
+              <span style="font-size:10px; color:#999">${z.updated_at || 'No recent ping'}</span>
+            `);
+            zoneMarkers[z.zone_id] = circle;
+          }
+        });
+
+      } catch (err) {
+        console.error("Surge fetch error", err);
+      }
+    }
+
+    // Poll Batch Stats
+    async function updateBatchStats() {
+      try {
+        const res = await fetch('/api/batch-stats');
+        const data = await res.json();
+
+        if (data.model && data.model.metrics) {
+          const rf = data.model.metrics.random_forest;
+          const lr = data.model.metrics.linear_regression;
+          if (rf) {
+            document.getElementById('val-rf').innerText = `R²: ${rf.r2.toFixed(4)} | MAE: ${rf.mae.toFixed(2)}`;
+            const slaPill = document.getElementById('sla-badge');
+            slaPill.className = data.model.sla_passed ? 'badge badge-running' : 'badge badge-stopped';
+            slaPill.innerText = data.model.sla_passed ? 'SLA: PASSED' : 'SLA: FAILED';
+            document.getElementById('val-sla').innerText = data.model.sla_passed ? 'PASSED (R² ≥ 0.70)' : 'FAILED';
+          }
+          if (lr) {
+            document.getElementById('val-lr').innerText = `R²: ${lr.r2.toFixed(4)} | MAE: ${lr.mae.toFixed(2)}`;
+          }
+        }
+        if (data.warehouse && data.warehouse.fact_trips) {
+          document.getElementById('val-fact').innerText = Number(data.warehouse.fact_trips).toLocaleString() + ' rows';
+          document.getElementById('val-dims').innerText = 
+            `${data.warehouse.dim_driver || 2000} / ${data.warehouse.dim_zone || 40} / ${Number(data.warehouse.dim_time || 42931).toLocaleString()}`;
+        }
+        if (data.raw_trips) {
+          document.getElementById('val-total').innerText = Number(data.raw_trips.total).toLocaleString();
+        }
+      } catch (err) {
+        console.error("Batch stats fetch error", err);
+      }
+    }
+
+    // Poll Logs
+    async function updateLogs() {
+      try {
+        const res = await fetch(`/api/logs/${activeLogTab}?lines=100`);
+        const data = await res.json();
+        const box = document.getElementById('log-content');
+        box.innerText = data.lines || "(Log is currently empty)";
+        if (document.getElementById('autoscroll').checked) {
+          box.scrollTop = box.scrollHeight;
+        }
+      } catch (err) {
+        console.error("Log fetch error", err);
+      }
+    }
+
+    function switchTab(name) {
+      activeLogTab = name;
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.className = b.innerText.startsWith(name) ? 'tab-btn active' : 'tab-btn';
+      });
+      updateLogs();
+    }
+
+    async function triggerAll(action) {
+      try {
+        await fetch(`/api/demo/${action}`, { method: 'POST' });
+        setTimeout(() => { updateStatus(); updateSurge(); updateLogs(); }, 500);
+      } catch (err) {
+        alert("Action error: " + err);
+      }
+    }
+
+    async function triggerProc(name, action) {
+      try {
+        await fetch(`/api/process/${name}/${action}`, { method: 'POST' });
+        setTimeout(() => { updateStatus(); updateLogs(); }, 500);
+      } catch (err) {
+        alert("Action error: " + err);
+      }
+    }
+
+    // Initial triggers & recurring loops
+    updateStatus();
+    updateSurge();
+    updateBatchStats();
+    updateLogs();
+
+    setInterval(updateStatus, 3000);
+    setInterval(updateSurge, 5000);
+    setInterval(updateLogs, 3000);
+  </script>
+</body>
+</html>

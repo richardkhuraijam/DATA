@@ -7,8 +7,8 @@ Rule Table:
 - ratio < 1.0       -> 1.0x
 - 1.0 <= ratio < 1.5 -> 1.2x
 - 1.5 <= ratio < 2.0 -> 1.5x
-- 2.0 <= ratio < 3.0 -> 2.0x
-- ratio >= 3.0      -> 2.5x
+- 2.0 <= ratio <= 3.0 -> 2.0x
+- ratio > 3.0       -> 2.5x
 
 Weather Adjustments:
 - +0.2x if rain >= 2.5 mm/h
@@ -31,17 +31,17 @@ def compute_base_multiplier(ratio: float) -> float:
         return 1.2
     elif ratio < 2.0:
         return 1.5
-    elif ratio < 3.0:
+    elif ratio <= 3.0:
         return 2.0
     else:
         return 2.5
 
 
-def compute_weather_adjustment(rain_mm_h: float, temp_c: float) -> float:
+def compute_weather_adjustment(rain_mm_h: Optional[float], temp_c: Optional[float]) -> float:
     adj = 0.0
-    if rain_mm_h >= 2.5:
+    if rain_mm_h is not None and rain_mm_h >= 2.5:
         adj += 0.2
-    if temp_c < 5.0 or temp_c > 35.0:
+    if temp_c is not None and (temp_c < 5.0 or temp_c > 35.0):
         adj += 0.1
     return round(adj, 2)
 
@@ -72,8 +72,8 @@ def smooth_multiplier(
 def calculate_surge_multiplier(
     demand: int,
     supply: int,
-    rain_mm_h: float = 0.0,
-    temp_c: float = 20.0,
+    rain_mm_h: Optional[float] = None,
+    temp_c: Optional[float] = None,
     previous_multiplier: Optional[float] = None,
 ) -> Dict[str, float]:
     effective_supply = max(supply, 1)

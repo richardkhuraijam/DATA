@@ -218,7 +218,7 @@ object BatchProcessor {
     billingRecordsDF.cache()
 
     billingRecordsDF.count()
-    
+
        // ======================================
     // 18. PERSIST
     // ======================================
@@ -545,4 +545,3 @@ object BatchProcessor {
     spark.stop()
   }
 }
-

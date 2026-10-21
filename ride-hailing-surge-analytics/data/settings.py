@@ -13,8 +13,7 @@ load_dotenv(ROOT / ".env")
 
 DATA_DIR = ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"
-TLC_DIR = RAW_DIR / "tlc"
-ZONES_DIR = RAW_DIR / "zones"
+SYNTH_DIR = DATA_DIR / "synthetic"
 
 
 def env(name: str, default: str | None = None) -> str:

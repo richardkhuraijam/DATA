@@ -1,0 +1,15 @@
+transaction_id,customer_id,transaction_timestamp,amount,category,status
+T1001,C001,2026-10-01T09:10:00Z,250.00,grocery,completed
+T1002,C002,2026-10-01T10:15:00Z,1200.50,electronics,completed
+T1003,C001,2026-10-01T11:45:00Z,75.25,transport,completed
+T1004,C003,2026-10-02T08:05:00Z,560.00,grocery,completed
+T1005,C004,2026-10-02T12:30:00Z,999.99,electronics,pending
+T1006,C002,2026-10-02T15:00:00Z,42.00,food,completed
+T1007,C005,2026-10-03T07:20:00Z,180.00,transport,completed
+T1008,C006,2026-10-03T17:35:00Z,0.00,grocery,completed
+T1009,C007,2026-10-03T18:45:00Z,-25.00,food,failed
+T1010,,2026-10-04T08:00:00Z,100.00,grocery,completed
+T1011,C008,not-a-timestamp,80.00,food,completed
+T1012,C009,2026-10-04T10:30:00Z,not-a-number,electronics,completed
+T1013,C010,2026-10-04T13:00:00Z,450.00,,completed
+T1014,C011,2026-10-05T14:00:00Z,350.00,food,completed

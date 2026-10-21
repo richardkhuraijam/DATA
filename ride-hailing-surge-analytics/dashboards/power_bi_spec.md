@@ -67,7 +67,36 @@ Current_Avg_Surge = AVERAGE(gold_zone_minute_surge[surge_multiplier])
 
 | Page | Visual Type | Fields & Measures | Target / Rule |
 | --- | --- | --- | --- |
-| **1. Live Heat Map** | **Shape Map Visual** | Location: `zone_id`<br>Color Saturation: `Current_Avg_Surge`<br>Shapefile: `taxi_zones.json` / TopoJSON | Auto-refresh every 60s.<br>Color gradient: Green (1.0x) -> Orange (1.8x) -> Red (3.0x). |
+| **1. Live Heat Map (Option A: Shape Map)** | **Shape Map Visual** | Location: `zone_name`<br>Color Saturation: `surge_multiplier` or `revenue_inr`<br>Map: `exports/power_bi/hyderabad_zones.geojson` | Polygon boundaries partition Hyderabad into 40 contiguous zones.<br>Color gradient: Green (1.0x) -> Orange (1.5x) -> Red (>= 2.0x). |
+| **1. Live Heat Map (Option B: Bubble Map)** | **Map (bubble) visual** | Latitude: `latitude`<br>Longitude: `longitude`<br>Bubble size: `demand` or `requests`<br>Color: `surge_multiplier`<br>Data: `exports/power_bi/zone_surge_map.csv` | Bubble size scales with demand.<br>Tooltips show zone category, revenue, and ETA. |
 | **2. Utilisation Gauge** | **Radial Gauge** | Value: `Driver_Utilisation_Rate`<br>Target Value: `0.78` | Callout value turned on.<br>Red < 78%, Green >= 78%. |
 | **3. Revenue Trends** | **Line & Clustered Column** | X-Axis: `hour`<br>Column: `Revenue_Per_KM`<br>Line: `Avg_Rider_ETA` | Target line for ETA fixed at 4.5 min threshold. |
 | **4. Demand Forecast** | **Line Chart** | X-Axis: `time`<br>Values: Actual Demand vs `predicted_demand_next_30m` | Shaded error band for 30-min forecast window. |
+
+---
+
+## 5. Exported Map Assets & Power BI Loading Guide
+
+The map files are generated and ready in [`exports/power_bi/`](file:///Users/richardkhuraijam/Downloads/hyd/exports/power_bi):
+
+- **[`hyderabad_zones.geojson`](file:///Users/richardkhuraijam/Downloads/hyd/exports/power_bi/hyderabad_zones.geojson)**: 40 contiguous polygon zones formatted for Power BI's **Shape Map** visual.
+- **[`zone_surge_map.csv`](file:///Users/richardkhuraijam/Downloads/hyd/exports/power_bi/zone_surge_map.csv)**: 40 zones with Latitude, Longitude, Demands, Supply, Multipliers, Revenue, and ETAs.
+- **[`dim_zone_map.csv`](file:///Users/richardkhuraijam/Downloads/hyd/exports/power_bi/dim_zone_map.csv)**: Dimension table with zone centroids.
+- **[`preview_map.html`](file:///Users/richardkhuraijam/Downloads/hyd/exports/power_bi/preview_map.html)**: Standalone interactive HTML map viewer for immediate browser preview.
+
+### How to Add the Map in Power BI:
+
+#### Method A: Filled Polygon Map (Shape Map)
+1. In Power BI Desktop, enable Shape Map (**File** -> **Options and settings** -> **Options** -> **Preview features** -> Check **Shape map visual**).
+2. Add the **Shape Map** visual to your canvas.
+3. Drag `zone_name` from `zone_surge_map.csv` into **Location**, and `surge_multiplier` into **Color saturation**.
+4. In Visual formatting: go to **Visual** -> **Map settings** -> **Map type** -> select **Custom map**.
+5. Click **Browse** and select [`exports/power_bi/hyderabad_zones.geojson`](file:///Users/richardkhuraijam/Downloads/hyd/exports/power_bi/hyderabad_zones.geojson).
+
+#### Method B: Bubble Map (Default Map Visual)
+1. Add the standard **Map** visual to the report canvas.
+2. Drag `latitude` to the **Latitude** field and `longitude` to the **Longitude** field.
+3. Drag `zone_name` to **Legend** or **Tooltips**.
+4. Drag `demand` to **Bubble size**.
+5. Under **Data colors**, set conditional formatting based on `surge_multiplier`.
+

@@ -1,20 +1,21 @@
 from datetime import datetime
 
+from data.hyderabad import ZONE_ID_MAX
 from data.validation import is_valid_trip, is_valid_zone_id, miles_to_km
 
 
 def test_zone_id_bounds() -> None:
     assert is_valid_zone_id(1)
-    assert is_valid_zone_id(263)
+    assert is_valid_zone_id(ZONE_ID_MAX)
     assert not is_valid_zone_id(0)
-    assert not is_valid_zone_id(264)
+    assert not is_valid_zone_id(ZONE_ID_MAX + 1)
     assert not is_valid_zone_id(None)
 
 
 def test_valid_completed_trip() -> None:
     row = {
-        "pickup_zone_id": 79,
-        "dropoff_zone_id": 132,
+        "pickup_zone_id": 5,
+        "dropoff_zone_id": 13,
         "fare": 18.5,
         "pickup_time": datetime(2026, 1, 1, 8, 0),
         "dropoff_time": datetime(2026, 1, 1, 8, 22),

@@ -1,0 +1,5 @@
+FROM apache/airflow:2.9.3-python3.11
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends openjdk-17-jre-headless && rm -rf /var/lib/apt/lists/*
+USER airflow
+RUN pip install --no-cache-dir pyspark==3.5.3 pandas pyarrow sqlalchemy pymysql python-dotenv boto3 scikit-learn joblib faker

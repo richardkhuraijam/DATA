@@ -92,7 +92,7 @@ val avgResponseTime = cleanLogs
       .alias("average_response_time")
   )
 
-avgResponseTime.show()  
+avgResponseTime.show()
 // Slow requests
 println("\n========== SLOW REQUESTS ==========")
 

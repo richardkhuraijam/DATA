@@ -40,3 +40,20 @@ def test_full_surge_calculation() -> None:
     assert res["base_multiplier"] == 2.0
     assert res["weather_adjustment"] == 0.2
     assert res["surge_multiplier"] == 2.2
+
+
+def test_ratio_exactly_three_is_still_2x_per_proposal() -> None:
+    # proposal table: 2.0-3.0 -> 2.0x ; > 3.0 -> 2.5x
+    assert compute_base_multiplier(3.0) == 2.0
+    assert compute_base_multiplier(3.01) == 2.5
+
+
+def test_missing_weather_means_no_adjustment() -> None:
+    assert compute_weather_adjustment(None, None) == 0.0
+    res = calculate_surge_multiplier(demand=10, supply=10)
+    assert res["surge_multiplier"] == 1.2
+
+
+def test_smoothing_is_applied_when_previous_given() -> None:
+    res = calculate_surge_multiplier(demand=100, supply=1, previous_multiplier=1.0)
+    assert res["surge_multiplier"] == 1.3

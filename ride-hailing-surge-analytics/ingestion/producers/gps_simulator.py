@@ -1,104 +1,81 @@
-"""Driver GPS Simulator Producer.
+"""Synthetic Hyderabad driver fleet. Each driver pings every 15-30 s with status AVAILABLE / ON_TRIP.
 
-Simulates a fleet of drivers sending location pings every 15-30s to Kafka topic driver_gps_pings.
-Tracks driver status (AVAILABLE vs ON_TRIP) and zone locations.
+Drivers are placed in proportion to zone demand and slowly drift toward busier zones, so supply is correlated with
+demand (surge appears where demand outruns it). The share of drivers on a trip rises with citywide demand, so
+utilisation is an OUTPUT of the simulation, not a hard-coded number.
+
+  python -m ingestion.producers.gps_simulator --drivers 200
+  python -m ingestion.producers.gps_simulator --drivers 200 --simulate-hour 19
 """
-
 from __future__ import annotations
 
-from datetime import datetime, timezone
-import json
+import argparse
 import logging
-import os
-from pathlib import Path
 import random
 import time
-from typing import Any, Dict, List
 import uuid
+from datetime import datetime, timedelta, timezone
 
-from dotenv import load_dotenv
+from data.hyderabad import IST_OFFSET, ZONE_BY_ID, ZONES, hour_profile
+from ingestion.producers.utils import create_producer, send
 
-from data.zones import NYCZones
-from ingestion.producers.utils import create_producer, delivery_report
-
-ROOT = Path(__file__).resolve().parents[2]
-load_dotenv(ROOT / ".env")
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("gps_simulator")
 
 
-def generate_gps_ping(
-    driver_id: int, zone_id: int, status: str, zones_helper: NYCZones
-) -> Dict[str, Any]:
-    lat, lon = zones_helper.get_centroid(zone_id)
-    # Add minor GPS jitter (~100m)
-    lat += random.uniform(-0.002, 0.002)
-    lon += random.uniform(-0.002, 0.002)
+def zone_weights(ist: datetime) -> list[float]:
+    wk = ist.weekday() >= 5
+    return [z.weight * hour_profile(z.kind, ist.hour + ist.minute / 60, wk) for z in ZONES]
 
-    return {
-        "event_id": str(uuid.uuid4()),
-        "event_time": datetime.now(timezone.utc).isoformat(),
-        "driver_id": driver_id,
-        "lat": round(lat, 6),
-        "lon": round(lon, 6),
-        "zone_id": zone_id,
-        "status": status,
-        "source": "gps_simulator",
-    }
+
+def make_ping(driver_id: str, zone_id: int, status: str, rng: random.Random, now_utc: datetime) -> dict:
+    z = ZONE_BY_ID[zone_id]
+    return {"event_id": uuid.uuid4().hex, "event_time": now_utc.isoformat(), "driver_id": driver_id, "zone_id": zone_id,
+            "lat": round(z.lat + rng.uniform(-0.004, 0.004), 6), "lon": round(z.lon + rng.uniform(-0.004, 0.004), 6),
+            "status": status, "source": "gps_simulator"}
 
 
 def main() -> None:
-    topic = "driver_gps_pings"
-    num_drivers = int(os.getenv("SIMULATOR_DRIVER_COUNT", "100"))
-    producer = create_producer()
-    zones_helper = NYCZones()
-
-    # Initialize drivers across random valid TLC zones
-    valid_zones = [z["zone_id"] for z in zones_helper.all_zones()]
-    driver_states = [
-        {
-            "driver_id": 1000 + i,
-            "zone_id": random.choice(valid_zones),
-            "status": "AVAILABLE" if random.random() < 0.7 else "ON_TRIP",
-        }
-        for i in range(num_drivers)
-    ]
-
-    logger.info("Starting GPS simulator for %d drivers to topic '%s'...", num_drivers, topic)
-    pings_sent = 0
-
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--drivers", type=int, default=200)
+    ap.add_argument("--simulate-hour", type=int, default=None)
+    ap.add_argument("--base-busy", type=float, default=0.45, help="share of drivers on a trip at average demand")
+    ap.add_argument("--max-pings", type=int, default=0)
+    ap.add_argument("--seed", type=int, default=None)
+    a = ap.parse_args()
+    rng = random.Random(a.seed)
+    ist0 = (datetime.now(timezone.utc) + IST_OFFSET).replace(tzinfo=None)
+    w0 = zone_weights(ist0.replace(hour=a.simulate_hour) if a.simulate_hour is not None else ist0)
+    ids = [z.zone_id for z in ZONES]
+    fleet = [{"id": f"DRV-{i:04d}", "zone": rng.choices(ids, weights=w0)[0], "busy": rng.random() < a.base_busy,
+              "next": time.time() + rng.uniform(0, 20)} for i in range(a.drivers)]
+    producer, sent = create_producer(), 0
+    logger.info("GPS simulator: %d drivers", a.drivers)
     try:
         while True:
-            for driver in driver_states:
-                # 10% chance driver moves to an adjacent zone
-                if random.random() < 0.1:
-                    driver["zone_id"] = random.choice(valid_zones)
-
-                # 5% chance driver toggles status
-                if random.random() < 0.05:
-                    driver["status"] = "ON_TRIP" if driver["status"] == "AVAILABLE" else "AVAILABLE"
-
-                ping = generate_gps_ping(
-                    driver["driver_id"], driver["zone_id"], driver["status"], zones_helper
-                )
-                key = str(ping["zone_id"])
-
-                producer.produce(
-                    topic=topic,
-                    key=key,
-                    value=json.dumps(ping),
-                    callback=delivery_report,
-                )
-                pings_sent += 1
-
-            producer.flush(timeout=1)
-            logger.info("Sent batch of %d GPS pings (Total: %d)", num_drivers, pings_sent)
-            time.sleep(15.0)
+            now = time.time(); now_utc = datetime.now(timezone.utc)
+            ist = (now_utc + IST_OFFSET).replace(tzinfo=None)
+            if a.simulate_hour is not None:
+                ist = ist.replace(hour=a.simulate_hour)
+            weights = zone_weights(ist)
+            intensity = min(1.0, sum(weights) / (len(weights) * 0.55))               # 0..1 citywide demand level
+            p_busy = min(0.92, max(0.15, a.base_busy * (0.6 + 0.9 * intensity)))
+            for d in fleet:
+                if now < d["next"]:
+                    continue
+                if rng.random() < 0.10:                                              # drift toward busier zones
+                    d["zone"] = rng.choices(ids, weights=weights)[0]
+                if rng.random() < 0.20:                                              # trip start/finish
+                    d["busy"] = rng.random() < p_busy
+                send(producer, "driver_gps_pings", d["zone"], make_ping(d["id"], d["zone"], "ON_TRIP" if d["busy"] else "AVAILABLE", rng, now_utc))
+                sent += 1; d["next"] = now + rng.uniform(15, 30)
+            producer.poll(0)
+            if a.max_pings and sent >= a.max_pings:
+                break
+            time.sleep(0.5)
     except KeyboardInterrupt:
-        logger.info("GPS simulator stopped by user.")
+        pass
     finally:
-        producer.flush(timeout=5)
+        producer.flush(10); logger.info("sent %d pings", sent)
 
 
 if __name__ == "__main__":

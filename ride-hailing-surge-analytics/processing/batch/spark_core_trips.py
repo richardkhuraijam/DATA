@@ -58,10 +58,9 @@ def compute_peak_hours_rdd(valid_trips_rdd: Any) -> List[Tuple[int, int]]:
     Maps to (pickup_hour, 1), reduces by key, and sorts by count descending.
     """
     def extract_hour(trip: Dict[str, Any]) -> int:
-        p_time: datetime | None = trip.get("pickup_time")
-        if isinstance(p_time, datetime):
-            return p_time.hour
-        return 0
+        # Use request_time: cancelled trips have NO pickup_time and were previously all counted as hour 0.
+        t: datetime | None = trip.get("request_time") or trip.get("pickup_time")
+        return t.hour if isinstance(t, datetime) else -1
 
     return (
         valid_trips_rdd.map(lambda t: (extract_hour(t), 1))
@@ -144,6 +143,13 @@ def run_spark_batch_analysis(
             spark.stop()
 
 
+def write_results(spark: SparkSession, peak_hours, cancels, out_base: str) -> None:
+    """Persist the two pair-RDD analyses so Gold / dashboards / GenAI can use them."""
+    spark.createDataFrame(peak_hours, ["hour", "trips"]).write.mode("overwrite").parquet(f"{out_base}/peak_hours")
+    spark.createDataFrame([(z, h, r, c) for ((z, h, r), c) in cancels],
+                          ["pickup_zone_id", "hour", "cancel_reason", "cancellations"]).write.mode("overwrite").parquet(f"{out_base}/cancel_reasons")
+
+
 def main() -> None:
     raw_landing_trips = os.getenv(
         "TRIPS_PARQUET_PATH", str(ROOT / "data" / "raw" / "mysql" / "trips")
@@ -155,7 +161,15 @@ def main() -> None:
         )
         return
 
-    run_spark_batch_analysis(raw_landing_trips)
+    spark = (SparkSession.builder.appName("SparkCoreTripsBatch").master("local[*]")
+             .config("spark.driver.memory", os.getenv("SPARK_DRIVER_MEMORY", "1g")).getOrCreate())
+    try:
+        peak, cancels, total, valid = run_spark_batch_analysis(raw_landing_trips, spark)
+        write_results(spark, peak, cancels, os.getenv("ANALYSIS_OUT", str(ROOT / "data" / "analysis")))
+        print(f"total={total} valid={valid} dropped={total - valid}")
+        print("peak hours (IST) top5:", peak[:5]); print("top cancellations top5:", cancels[:5])
+    finally:
+        spark.stop()
 
 
 if __name__ == "__main__":

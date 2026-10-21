@@ -9,6 +9,8 @@ __pycache__/
 .ruff_cache/
 .DS_Store
 *.log
+.run/
+logs/
 
 # Downloaded TLC / GIS (large)
 data/raw/
@@ -30,3 +32,16 @@ mlflow.db
 mlruns/
 *.db
 *.sqlite
+.env
+data/raw/
+data/synthetic/
+data/warehouse/
+data/gold/
+data/lakehouse/
+data/checkpoints/
+data/analysis/
+data/_csv_baseline/
+ml/model.joblib
+metastore_db/
+derby.log
+spark-warehouse/

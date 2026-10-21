@@ -25,7 +25,7 @@ logger = logging.getLogger("spark_jdbc_import")
 
 def get_jdbc_url() -> str:
     host = os.getenv("MYSQL_HOST", "127.0.0.1")
-    port = os.getenv("MYSQL_PORT", "3307")
+    port = os.getenv("MYSQL_PORT", "3306")
     database = os.getenv("MYSQL_DATABASE", "ridehail")
     return f"jdbc:mysql://{host}:{port}/{database}"
 
@@ -34,7 +34,7 @@ def get_sqlalchemy_url() -> str:
     user = os.getenv("MYSQL_USER", "etl")
     password = os.getenv("MYSQL_PASSWORD", "change_me_etl")
     host = os.getenv("MYSQL_HOST", "127.0.0.1")
-    port = os.getenv("MYSQL_PORT", "3307")
+    port = os.getenv("MYSQL_PORT", "3306")
     database = os.getenv("MYSQL_DATABASE", "ridehail")
     return f"mysql+pymysql://{user}:{password}@{host}:{port}/{database}"
 

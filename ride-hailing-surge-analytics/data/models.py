@@ -57,7 +57,7 @@ class Trip(Base):
     trip_id: Mapped[str] = mapped_column(String(36), primary_key=True)
     driver_id: Mapped[str] = mapped_column(String(36), ForeignKey("drivers.driver_id"), nullable=False)
     rider_id: Mapped[str] = mapped_column(String(36), ForeignKey("riders.rider_id"), nullable=False)
-    # No FK: TLC uses 264/265 as unknown, and Phase 2 cleansing expects dirty zone values.
+    # No FK: the cleansing job expects (and must drop) dirty zone values such as NULL.
     pickup_zone_id: Mapped[int | None]
     dropoff_zone_id: Mapped[int | None]
     request_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)

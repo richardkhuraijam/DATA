@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Mapping
 
-NYC_ZONE_ID_MIN = 1
-NYC_ZONE_ID_MAX = 263
+from data.hyderabad import ZONE_ID_MAX, ZONE_ID_MIN
+
 MILES_TO_KM = 1.60934
 
 COMPLETED = "COMPLETED"
@@ -22,7 +22,7 @@ def is_valid_zone_id(zone_id: Any) -> bool:
         value = int(zone_id)
     except (TypeError, ValueError):
         return False
-    return NYC_ZONE_ID_MIN <= value <= NYC_ZONE_ID_MAX
+    return ZONE_ID_MIN <= value <= ZONE_ID_MAX
 
 
 def is_valid_trip(row: Mapping[str, Any]) -> bool:
