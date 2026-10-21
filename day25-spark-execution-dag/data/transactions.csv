@@ -1,0 +1,13 @@
+transaction_id,customer_id,category,amount,status,city
+T001,C101,electronics,1200.50,SUCCESS,Hyderabad
+T002,C102,grocery,250.00,SUCCESS,Hyderabad
+T003,C103,food,145.00,FAILED,Secunderabad
+T004,C101,transport,75.25,SUCCESS,Hyderabad
+T005,C104,electronics,999.99,SUCCESS,Cyberabad
+T006,C105,grocery,310.00,SUCCESS,Hyderabad
+T007,C106,food,247.00,SUCCESS,Secunderabad
+T008,C107,transport,180.00,CANCELLED,Hyderabad
+T009,C102,grocery,250.00,SUCCESS,Cyberabad
+T010,C108,electronics,650.00,FAILED,Hyderabad
+T011,C109,food,89.50,SUCCESS,Hyderabad
+T012,C110,transport,120.00,SUCCESS,Cyberabad
